@@ -318,6 +318,14 @@ def cmd_setup(args: argparse.Namespace) -> None:
     sys.exit(0 if success else 1)
 
 
+def cmd_dashboard(args: argparse.Namespace) -> None:
+    """Show terminal dashboard with system health, doc stats, and alerts."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.dashboard import run_dashboard
+    run_dashboard(cfg, as_json=args.json, watch=args.watch)
+
+
 def cmd_system_status(args: argparse.Namespace) -> None:
     """Show comprehensive system status."""
     _suppress_print_if_quiet(args)
@@ -409,6 +417,13 @@ def main() -> None:
     p = sub.add_parser("ai-status", help="Check AI/Ollama availability")
     _add_global_flags(p)
     p.set_defaults(func=cmd_ai_status)
+
+    # dashboard
+    p = sub.add_parser("dashboard", help="Show terminal dashboard")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+    p.add_argument("--watch", action="store_true", help="Auto-refresh every 5s")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_dashboard)
 
     # === Setup Commands ===
 

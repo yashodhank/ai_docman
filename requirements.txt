@@ -1,5 +1,6 @@
 # Core dependencies
 pyyaml>=6.0
+rich>=13.0.0
 
 # PDF text extraction (install one or both)
 pdfplumber>=0.10.0
