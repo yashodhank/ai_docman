@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 from pathlib import Path
 
@@ -54,3 +55,31 @@ def safe_move(src: Path, dst: Path) -> None:
 
 # Backwards compatibility alias
 atomic_move = safe_move
+
+_LOCK_FILE = Path.home() / ".docman.lock"
+
+
+def acquire_lock() -> bool:
+    """Acquire a PID-based process lock. Returns True if acquired."""
+    if _LOCK_FILE.exists():
+        try:
+            pid = int(_LOCK_FILE.read_text().strip())
+            # Check if the process is still alive
+            os.kill(pid, 0)
+            return False  # Process is still running
+        except (ValueError, ProcessLookupError, PermissionError):
+            # Stale lock file — remove it
+            _LOCK_FILE.unlink(missing_ok=True)
+    _LOCK_FILE.write_text(str(os.getpid()))
+    return True
+
+
+def release_lock() -> None:
+    """Release the process lock."""
+    try:
+        if _LOCK_FILE.exists():
+            pid = int(_LOCK_FILE.read_text().strip())
+            if pid == os.getpid():
+                _LOCK_FILE.unlink(missing_ok=True)
+    except (ValueError, OSError):
+        _LOCK_FILE.unlink(missing_ok=True)

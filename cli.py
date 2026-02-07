@@ -4,12 +4,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from docman.config import load_config
-from docman.logging_setup import setup_logging
+from docman.logging_setup import setup_logging, generate_session_id
+
+# Write commands that need process lock
+_WRITE_COMMANDS = {"index", "duplicates", "classify", "triage", "verify",
+                   "dedup", "smart-classify", "setup"}
 
 
 def _add_global_flags(parser: argparse.ArgumentParser) -> None:
@@ -31,131 +36,75 @@ def _setup(args: argparse.Namespace) -> dict[str, Any]:
     return cfg
 
 
+def _suppress_print_if_quiet(args: argparse.Namespace) -> None:
+    """Redirect print output to devnull if --quiet is set."""
+    if getattr(args, "quiet", False):
+        import io
+        sys.stdout = io.StringIO()
+
+
 def cmd_index(args: argparse.Namespace) -> None:
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.core.indexer import run_index
     run_index(cfg, dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_duplicates(args: argparse.Namespace) -> None:
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.core.duplicates import run_duplicates
     run_duplicates(cfg, dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_classify(args: argparse.Namespace) -> None:
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.core.classifier import run_classify
     run_classify(cfg, scope=args.scope, dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_triage(args: argparse.Namespace) -> None:
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.core.triage import run_triage
     run_triage(cfg, weekly=args.weekly, dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_verify(args: argparse.Namespace) -> None:
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.core.verifier import run_verify
     run_verify(cfg, dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_dedup(args: argparse.Namespace) -> None:
     cfg = _setup(args)
-    _run_dedup(cfg, scope=args.scope, action=args.action,
-               dry_run=args.dry_run, verbose=args.verbose)
-
-
-def _run_dedup(cfg: dict[str, Any], scope: str = "downloads",
-               action: str = "quarantine", dry_run: bool = False,
-               verbose: bool = False) -> None:
-    """Quarantine or remove duplicates."""
-    import csv
-    import logging
-    from docman.fileops import safe_dest, atomic_move
-    from docman.logging_setup import log_operation
-
-    logger = logging.getLogger("docman")
-    docs = Path(cfg["docs_dir"]).resolve()
-    downloads = Path(cfg["downloads_dir"]).resolve()
-    index_dir = docs / cfg["index_dir"]
-    quarantine = docs / cfg["quarantine_dir"]
-    dupes_file = index_dir / "duplicates_report.csv"
-
-    if not dupes_file.exists():
-        print("No duplicates report found. Run 'docman duplicates' first.")
-        return
-
-    to_process: list[tuple[Path, str]] = []
-    with open(dupes_file, encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader, None)  # skip header
-        for row in reader:
-            if len(row) < 3:
-                continue
-            dup_paths = [p.strip() for p in row[2].split("|") if p.strip()]
-            for dp in dup_paths:
-                p = Path(dp).resolve()
-                if not p.exists():
-                    continue
-                # Validate path is within expected directories
-                if not (p.is_relative_to(docs) or p.is_relative_to(downloads)):
-                    logger.warning("Skipping path outside managed dirs: %s", p)
-                    continue
-                if scope == "downloads" and not p.is_relative_to(downloads):
-                    continue
-                to_process.append((p, row[0]))
-
-    if not to_process:
-        print("No duplicates to process.")
-        return
-
-    # Confirm before delete
-    if action == "delete" and not dry_run:
-        answer = input(f"Delete {len(to_process)} files? [y/N]: ").strip().lower()
-        if answer != "y":
-            print("Aborted.")
-            return
-
-    processed = 0
-    for p, sha in to_process:
-        if dry_run:
-            print(f"  [{action}] {p}")
-            processed += 1
-            continue
-        if action == "quarantine":
-            dest = safe_dest(p, quarantine)
-            atomic_move(p, dest)
-            log_operation(logger, op="dedup", action="quarantine",
-                          src=str(p), dst=str(dest), sha256=sha,
-                          dry_run=False, status="ok")
-        elif action == "delete":
-            p.unlink()
-            log_operation(logger, op="dedup", action="delete",
-                          src=str(p), sha256=sha,
-                          dry_run=False, status="ok")
-        processed += 1
-
-    tag = " [DRY RUN]" if dry_run else ""
-    print(f"Dedup complete: {processed} files {action}d{tag}")
+    _suppress_print_if_quiet(args)
+    from docman.core.dedup import run_dedup
+    run_dedup(cfg, scope=args.scope, action=args.action,
+              dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_status(args: argparse.Namespace) -> None:
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.status import generate_report
     print(generate_report(cfg))
 
 
 def cmd_undo(args: argparse.Namespace) -> None:
     cfg = _setup(args)
-    _run_undo(cfg, last=args.last, since=args.since,
-              dry_run=args.dry_run, verbose=args.verbose)
+    _suppress_print_if_quiet(args)
+    from docman.core.undo import run_undo
+    run_undo(cfg, last=args.last, since=args.since,
+             dry_run=args.dry_run, verbose=args.verbose)
 
 
 def cmd_analyze(args: argparse.Namespace) -> None:
     """Analyze a file using AI for classification suggestions."""
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.ai.analyzer import SmartAnalyzer
 
     analyzer = SmartAnalyzer(model=args.model, use_ai=not args.no_ai)
@@ -163,7 +112,7 @@ def cmd_analyze(args: argparse.Namespace) -> None:
     if args.ensure_model:
         if not analyzer.ensure_model():
             print(f"Failed to pull model {args.model}")
-            return
+            sys.exit(1)
 
     path = Path(args.path).expanduser().resolve()
     docs = Path(cfg["docs_dir"])
@@ -205,6 +154,7 @@ def cmd_analyze(args: argparse.Namespace) -> None:
 def cmd_smart_classify(args: argparse.Namespace) -> None:
     """Classify files using AI-powered analysis."""
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.ai.analyzer import SmartAnalyzer
     from docman.fileops import safe_dest, atomic_move, sha256_file
     from docman.logging_setup import log_operation
@@ -222,7 +172,7 @@ def cmd_smart_classify(args: argparse.Namespace) -> None:
 
     if not analyzer.ensure_model():
         print(f"Failed to ensure model {args.model} is available")
-        return
+        sys.exit(1)
 
     docs = Path(cfg["docs_dir"])
     downloads = Path(cfg["downloads_dir"])
@@ -297,13 +247,14 @@ def cmd_smart_classify(args: argparse.Namespace) -> None:
 def cmd_suggest_rename(args: argparse.Namespace) -> None:
     """Suggest better filenames based on content analysis."""
     cfg = _setup(args)
+    _suppress_print_if_quiet(args)
     from docman.ai.analyzer import SmartAnalyzer
 
     analyzer = SmartAnalyzer(model=args.model, use_ai=True)
 
     if not analyzer.use_ai:
         print("AI not available. Install Ollama: https://ollama.ai")
-        return
+        sys.exit(1)
 
     path = Path(args.path).expanduser().resolve()
 
@@ -326,6 +277,7 @@ def cmd_suggest_rename(args: argparse.Namespace) -> None:
 
 def cmd_ai_status(args: argparse.Namespace) -> None:
     """Check AI/Ollama availability and models."""
+    _suppress_print_if_quiet(args)
     from docman.ai.llm import is_ollama_available, get_available_models, DEFAULT_MODEL
 
     print("AI Status")
@@ -368,104 +320,9 @@ def cmd_setup(args: argparse.Namespace) -> None:
 
 def cmd_system_status(args: argparse.Namespace) -> None:
     """Show comprehensive system status."""
+    _suppress_print_if_quiet(args)
     from docman.setup.platform import print_status_report
     print_status_report()
-
-
-def _run_undo(cfg: dict[str, Any], last: int | None = None,
-              since: str | None = None, dry_run: bool = False,
-              verbose: bool = False) -> None:
-    """Reverse moves from JSONL log."""
-    import logging
-    from docman.fileops import sha256_file, atomic_move
-    from docman.logging_setup import log_operation
-
-    logger = logging.getLogger("docman")
-    docs = Path(cfg["docs_dir"]).resolve()
-    downloads = Path(cfg["downloads_dir"]).resolve()
-    log_dir = docs / cfg["log_dir"]
-    jsonl = log_dir / "docman.jsonl"
-
-    if not jsonl.exists():
-        print("No log file found.")
-        return
-
-    # Validate --last
-    if last is not None and last <= 0:
-        print("Error: --last must be a positive integer.")
-        sys.exit(1)
-
-    # Validate --since
-    if since:
-        try:
-            datetime.fromisoformat(since)
-        except ValueError:
-            print(f"Error: --since must be ISO format (e.g. 2024-01-15T10:00:00). Got: {since}")
-            sys.exit(1)
-
-    # Collect move records
-    moves: list[dict] = []
-    with open(jsonl, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if rec.get("op") not in ("move", "quarantine"):
-                continue
-            if not rec.get("src") or not rec.get("dst"):
-                continue
-            moves.append(rec)
-
-    # Filter
-    if since:
-        moves = [m for m in moves if m.get("ts", "") >= since]
-    if last:
-        moves = moves[-last:]
-
-    # Reverse in reverse order
-    moves.reverse()
-
-    undone = 0
-    for rec in moves:
-        src = Path(rec["dst"]).resolve()   # current location
-        dst = Path(rec["src"]).resolve()   # original location
-        expected_sha = rec.get("sha256", "")
-
-        # Validate paths are within expected directories
-        if not (src.is_relative_to(docs) or src.is_relative_to(downloads)):
-            logger.warning("Skipping undo — source outside managed dirs: %s", src)
-            continue
-        if not (dst.is_relative_to(docs) or dst.is_relative_to(downloads)):
-            logger.warning("Skipping undo — destination outside managed dirs: %s", dst)
-            continue
-
-        if not src.exists():
-            print(f"  SKIP (missing): {src}")
-            continue
-
-        # Verify SHA before undo
-        if expected_sha and expected_sha not in ("directory", "skipped_too_large", "error"):
-            actual = sha256_file(src)
-            if actual != expected_sha:
-                print(f"  SKIP (SHA mismatch): {src}")
-                continue
-
-        if dry_run:
-            print(f"  [undo] {src} -> {dst}")
-        else:
-            atomic_move(src, dst)
-            log_operation(logger, op="undo", src=str(src), dst=str(dst),
-                          sha256=expected_sha, dry_run=False, status="ok")
-            if verbose:
-                print(f"  Undone: {src.name} -> {dst.parent}")
-        undone += 1
-
-    tag = " [DRY RUN]" if dry_run else ""
-    print(f"\nUndo complete: {undone} moves reversed{tag}")
 
 
 def main() -> None:
@@ -567,4 +424,26 @@ def main() -> None:
     p.set_defaults(func=cmd_system_status)
 
     args = parser.parse_args()
-    args.func(args)
+
+    # Generate session ID and acquire lock for write operations
+    session_id = generate_session_id()
+
+    if args.command in _WRITE_COMMANDS and not args.dry_run:
+        from docman.fileops import acquire_lock, release_lock
+        if not acquire_lock():
+            print("Error: Another docman instance is already running.")
+            sys.exit(1)
+        try:
+            start_time = time.monotonic()
+            args.func(args)
+            duration = time.monotonic() - start_time
+            if not getattr(args, "quiet", False):
+                print(f"\n[session {session_id}, {duration:.1f}s]")
+        finally:
+            release_lock()
+    else:
+        start_time = time.monotonic()
+        args.func(args)
+        duration = time.monotonic() - start_time
+        if not getattr(args, "quiet", False) and args.command not in ("ai-status", "system-status"):
+            print(f"\n[session {session_id}, {duration:.1f}s]")

@@ -6,9 +6,25 @@ import io
 import json
 import logging
 import logging.handlers
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# Session ID for the current CLI invocation
+_session_id: str = ""
+
+
+def generate_session_id() -> str:
+    """Generate a unique session ID for this CLI invocation."""
+    global _session_id
+    _session_id = uuid.uuid4().hex[:12]
+    return _session_id
+
+
+def get_session_id() -> str:
+    """Get the current session ID."""
+    return _session_id
 
 
 def setup_logging(log_dir: Path, log_level: str = "INFO",
@@ -32,8 +48,12 @@ def setup_logging(log_dir: Path, log_level: str = "INFO",
 
 
 def log_operation(logger: logging.Logger, **fields: Any) -> None:
-    """Append a single JSONL record."""
-    record = {"ts": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    """Append a single JSONL record with session ID and timestamp."""
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    if _session_id:
+        record["session_id"] = _session_id
     record.update(fields)
     logger.info(json.dumps(record, ensure_ascii=False))
 
