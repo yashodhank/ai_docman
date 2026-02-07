@@ -57,10 +57,26 @@ class Installer:
                 return True
             self.log(f"Homebrew install failed: {err}")
 
-        # Fallback to curl install
-        self.log("Installing via official script...")
+        # Fallback to curl install — with security warning
+        install_url = "https://ollama.ai/install.sh"
+        self.log("\n*** SECURITY WARNING ***")
+        self.log(f"About to download and execute a script from: {install_url}")
+        self.log("Please verify the URL is correct before proceeding.")
+        self.log("Alternatively, install manually: brew install ollama")
+
+        if sys.stdin.isatty():
+            answer = input("Continue with script install? [y/N]: ").strip().lower()
+            if answer != "y":
+                self.log("Skipped. Install manually: brew install ollama")
+                return False
+        else:
+            self.log("Non-interactive mode: skipping curl|sh install.")
+            self.log("Install manually: brew install ollama")
+            return False
+
+        self.log("Downloading installer...")
         code, out, err = run_command(
-            ["curl", "-fsSL", "https://ollama.ai/install.sh"],
+            ["curl", "-fsSL", install_url],
             timeout=30,
         )
         if code != 0:
@@ -78,11 +94,25 @@ class Installer:
 
     def _install_ollama_linux(self) -> bool:
         """Install Ollama on Linux (Ubuntu/Debian)."""
-        self.log("Installing via official script...")
+        install_url = "https://ollama.ai/install.sh"
+        self.log("\n*** SECURITY WARNING ***")
+        self.log(f"About to download and execute a script from: {install_url}")
+        self.log("Please verify the URL is correct before proceeding.")
 
-        # Use the official install script
+        if sys.stdin.isatty():
+            answer = input("Continue with script install? [y/N]: ").strip().lower()
+            if answer != "y":
+                self.log("Skipped. Install manually:")
+                self.log(f"  curl -fsSL {install_url} | sh")
+                return False
+        else:
+            self.log("Non-interactive mode: skipping curl|sh install.")
+            self.log(f"Install manually: curl -fsSL {install_url} | sh")
+            return False
+
+        self.log("Installing via official script...")
         code, _, err = run_command(
-            ["sh", "-c", "curl -fsSL https://ollama.ai/install.sh | sh"],
+            ["sh", "-c", f"curl -fsSL {install_url} | sh"],
             timeout=300,
         )
 
@@ -92,7 +122,7 @@ class Installer:
 
         self.log(f"Install failed: {err}")
         self.log("\nManual installation instructions:")
-        self.log("  curl -fsSL https://ollama.ai/install.sh | sh")
+        self.log(f"  curl -fsSL {install_url} | sh")
         return False
 
     def _install_ollama_windows(self) -> bool:

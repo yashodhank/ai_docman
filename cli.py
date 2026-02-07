@@ -77,8 +77,8 @@ def _run_dedup(cfg: dict[str, Any], scope: str = "downloads",
     from docman.logging_setup import log_operation
 
     logger = logging.getLogger("docman")
-    docs = Path(cfg["docs_dir"])
-    downloads = Path(cfg["downloads_dir"])
+    docs = Path(cfg["docs_dir"]).resolve()
+    downloads = Path(cfg["downloads_dir"]).resolve()
     index_dir = docs / cfg["index_dir"]
     quarantine = docs / cfg["quarantine_dir"]
     dupes_file = index_dir / "duplicates_report.csv"
@@ -87,7 +87,7 @@ def _run_dedup(cfg: dict[str, Any], scope: str = "downloads",
         print("No duplicates report found. Run 'docman duplicates' first.")
         return
 
-    processed = 0
+    to_process: list[tuple[Path, str]] = []
     with open(dupes_file, encoding="utf-8") as f:
         reader = csv.reader(f)
         next(reader, None)  # skip header
@@ -96,27 +96,46 @@ def _run_dedup(cfg: dict[str, Any], scope: str = "downloads",
                 continue
             dup_paths = [p.strip() for p in row[2].split("|") if p.strip()]
             for dp in dup_paths:
-                p = Path(dp)
+                p = Path(dp).resolve()
                 if not p.exists():
                     continue
-                if scope == "downloads" and not str(p).startswith(str(downloads)):
+                # Validate path is within expected directories
+                if not (p.is_relative_to(docs) or p.is_relative_to(downloads)):
+                    logger.warning("Skipping path outside managed dirs: %s", p)
                     continue
-                if dry_run:
-                    print(f"  [{action}] {p}")
-                    processed += 1
+                if scope == "downloads" and not p.is_relative_to(downloads):
                     continue
-                if action == "quarantine":
-                    dest = safe_dest(p, quarantine)
-                    atomic_move(p, dest)
-                    log_operation(logger, op="dedup", action="quarantine",
-                                  src=str(p), dst=str(dest), sha256=row[0],
-                                  dry_run=False, status="ok")
-                elif action == "delete":
-                    p.unlink()
-                    log_operation(logger, op="dedup", action="delete",
-                                  src=str(p), sha256=row[0],
-                                  dry_run=False, status="ok")
-                processed += 1
+                to_process.append((p, row[0]))
+
+    if not to_process:
+        print("No duplicates to process.")
+        return
+
+    # Confirm before delete
+    if action == "delete" and not dry_run:
+        answer = input(f"Delete {len(to_process)} files? [y/N]: ").strip().lower()
+        if answer != "y":
+            print("Aborted.")
+            return
+
+    processed = 0
+    for p, sha in to_process:
+        if dry_run:
+            print(f"  [{action}] {p}")
+            processed += 1
+            continue
+        if action == "quarantine":
+            dest = safe_dest(p, quarantine)
+            atomic_move(p, dest)
+            log_operation(logger, op="dedup", action="quarantine",
+                          src=str(p), dst=str(dest), sha256=sha,
+                          dry_run=False, status="ok")
+        elif action == "delete":
+            p.unlink()
+            log_operation(logger, op="dedup", action="delete",
+                          src=str(p), sha256=sha,
+                          dry_run=False, status="ok")
+        processed += 1
 
     tag = " [DRY RUN]" if dry_run else ""
     print(f"Dedup complete: {processed} files {action}d{tag}")
@@ -356,13 +375,27 @@ def _run_undo(cfg: dict[str, Any], last: int | None = None,
     from docman.logging_setup import log_operation
 
     logger = logging.getLogger("docman")
-    docs = Path(cfg["docs_dir"])
+    docs = Path(cfg["docs_dir"]).resolve()
+    downloads = Path(cfg["downloads_dir"]).resolve()
     log_dir = docs / cfg["log_dir"]
     jsonl = log_dir / "docman.jsonl"
 
     if not jsonl.exists():
         print("No log file found.")
         return
+
+    # Validate --last
+    if last is not None and last <= 0:
+        print("Error: --last must be a positive integer.")
+        sys.exit(1)
+
+    # Validate --since
+    if since:
+        try:
+            datetime.fromisoformat(since)
+        except ValueError:
+            print(f"Error: --since must be ISO format (e.g. 2024-01-15T10:00:00). Got: {since}")
+            sys.exit(1)
 
     # Collect move records
     moves: list[dict] = []
@@ -392,9 +425,17 @@ def _run_undo(cfg: dict[str, Any], last: int | None = None,
 
     undone = 0
     for rec in moves:
-        src = Path(rec["dst"])   # current location
-        dst = Path(rec["src"])   # original location
+        src = Path(rec["dst"]).resolve()   # current location
+        dst = Path(rec["src"]).resolve()   # original location
         expected_sha = rec.get("sha256", "")
+
+        # Validate paths are within expected directories
+        if not (src.is_relative_to(docs) or src.is_relative_to(downloads)):
+            logger.warning("Skipping undo — source outside managed dirs: %s", src)
+            continue
+        if not (dst.is_relative_to(docs) or dst.is_relative_to(downloads)):
+            logger.warning("Skipping undo — destination outside managed dirs: %s", dst)
+            continue
 
         if not src.exists():
             print(f"  SKIP (missing): {src}")

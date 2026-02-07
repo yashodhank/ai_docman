@@ -2,14 +2,30 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import subprocess
+import urllib.request
+import urllib.error
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("docman")
 
 # Default model - small but capable
 DEFAULT_MODEL = "phi3:mini"  # 3.8B params, good for classification
 FALLBACK_MODEL = "llama3.2:3b"  # Alternative
+
+_MODEL_NAME_RE = re.compile(r"^[a-zA-Z0-9._:/-]+$")
+_MODEL_NAME_MAX_LEN = 100
+
+
+def _validate_model_name(model: str) -> None:
+    """Validate model name to prevent injection attacks."""
+    if not model or len(model) > _MODEL_NAME_MAX_LEN:
+        raise ValueError(f"Invalid model name length: {len(model) if model else 0}")
+    if not _MODEL_NAME_RE.match(model):
+        raise ValueError(f"Invalid model name: {model!r}")
 
 
 def is_ollama_available() -> bool:
@@ -35,12 +51,14 @@ def get_available_models() -> list[str]:
             return []
         lines = result.stdout.strip().split("\n")[1:]  # Skip header
         return [line.split()[0] for line in lines if line.strip()]
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to list models: %s", e)
         return []
 
 
 def pull_model(model: str) -> bool:
     """Pull a model if not available."""
+    _validate_model_name(model)
     try:
         print(f"Pulling model {model}... (this may take a few minutes)")
         result = subprocess.run(
@@ -48,23 +66,34 @@ def pull_model(model: str) -> bool:
             capture_output=False, timeout=600
         )
         return result.returncode == 0
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to pull model %s: %s", model, e)
         return False
 
 
 def query_llm(prompt: str, model: str = DEFAULT_MODEL, timeout: int = 60) -> str:
-    """Send a prompt to Ollama and get response."""
+    """Send a prompt to Ollama via HTTP API and get response."""
+    _validate_model_name(model)
     try:
-        result = subprocess.run(
-            ["ollama", "run", model, prompt],
-            capture_output=True, text=True, timeout=timeout
+        payload = json.dumps({
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "http://localhost:11434/api/generate",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
-        if result.returncode == 0:
-            return result.stdout.strip()
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("response", "").strip()
+    except urllib.error.URLError as e:
+        logger.debug("Ollama API connection error: %s", e)
         return ""
-    except subprocess.TimeoutExpired:
-        return ""
-    except Exception:
+    except Exception as e:
+        logger.debug("Ollama query failed: %s", e)
         return ""
 
 
@@ -76,6 +105,7 @@ def classify_with_llm(
     model: str = DEFAULT_MODEL,
 ) -> dict[str, Any]:
     """Use LLM to classify a document into categories."""
+    _validate_model_name(model)
     categories_str = "\n".join(f"- {c}" for c in categories)
 
     prompt = f"""You are a document classifier. Analyze this file and classify it.
@@ -131,8 +161,8 @@ JSON response:"""
                         break
             json_str = clean[start:end]
             return json.loads(json_str)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        logger.debug("Failed to parse LLM JSON response: %s", e)
 
     return {
         "category": "",
@@ -150,6 +180,7 @@ def suggest_filename(
     model: str = DEFAULT_MODEL,
 ) -> dict[str, Any]:
     """Use LLM to suggest a better filename based on content."""
+    _validate_model_name(model)
     prompt = f"""Suggest a better filename for this document.
 
 CURRENT FILENAME: {current_name}

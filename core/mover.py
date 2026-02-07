@@ -15,7 +15,8 @@ logger = logging.getLogger("docman")
 
 def run_apply(cfg: dict[str, Any], dry_run: bool = False, verbose: bool = False) -> None:
     """Execute moves from proposed_moves.csv (legacy compatibility)."""
-    docs = Path(cfg["docs_dir"])
+    docs = Path(cfg["docs_dir"]).resolve()
+    downloads = Path(cfg["downloads_dir"]).resolve()
     index_dir = docs / cfg["index_dir"]
     moves_file = index_dir / "proposed_moves.csv"
     dupes_file = index_dir / "duplicates_report.csv"
@@ -49,6 +50,13 @@ def run_apply(cfg: dict[str, Any], dry_run: bool = False, verbose: bool = False)
                 if has_icloud_placeholder(old_path):
                     skipped += 1
                     continue
+                skipped += 1
+                continue
+
+            # Validate path is within expected directories
+            old_resolved = old_path.resolve()
+            if not (old_resolved.is_relative_to(docs) or old_resolved.is_relative_to(downloads)):
+                logger.warning("Skipping path outside managed dirs: %s", old_path)
                 skipped += 1
                 continue
 

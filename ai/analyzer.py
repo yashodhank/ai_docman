@@ -133,22 +133,33 @@ class SmartAnalyzer:
                 "suggested_name": None,
             }
 
+        # Validate AI category against allowlist
+        ai_category = ai.get("category", "")
+        if ai_category and ai_category not in CATEGORIES:
+            logger.warning("AI returned invalid category %r, ignoring", ai_category)
+            ai_category = ""
+
+        # Sanitize suggested filename — strip directory components
+        ai_suggested = ai.get("suggested_name")
+        if ai_suggested:
+            ai_suggested = Path(ai_suggested).name
+
         # If AI classified with high confidence, use it
-        if ai.get("confidence") == "high" and ai.get("category"):
+        if ai.get("confidence") == "high" and ai_category:
             return {
-                "category": ai["category"],
+                "category": ai_category,
                 "source": "ai",
                 "confidence": "high",
-                "suggested_name": ai.get("suggested_name"),
+                "suggested_name": ai_suggested,
             }
 
         # Medium confidence AI
-        if ai.get("confidence") == "medium" and ai.get("category"):
+        if ai.get("confidence") == "medium" and ai_category:
             return {
-                "category": ai["category"],
+                "category": ai_category,
                 "source": "ai",
                 "confidence": "medium",
-                "suggested_name": ai.get("suggested_name"),
+                "suggested_name": ai_suggested,
             }
 
         # Fallback to inbox
