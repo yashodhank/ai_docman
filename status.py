@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("docman")
 
 
 def generate_report(cfg: dict[str, Any]) -> str:
@@ -84,7 +87,12 @@ def generate_report(cfg: dict[str, Any]) -> str:
 
     # Naming violations (files with spaces in organized folders)
     violations = 0
-    for org_dir in ["01_Business", "02_Personal"]:
+    try:
+        from docman.rules.registry import RuleRegistry
+        org_dirs = RuleRegistry().organized_dirs
+    except Exception:
+        org_dirs = []
+    for org_dir in org_dirs:
         d = docs / org_dir
         if d.exists():
             for f in d.rglob("*"):

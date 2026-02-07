@@ -206,7 +206,7 @@ def cmd_smart_classify(args: argparse.Namespace) -> None:
         result = analyzer.analyze(item, docs)
         rec = result.get("recommendation", {})
 
-        if rec.get("category") and rec["category"] != "00_Inbox_Documents":
+        if rec.get("category") and rec["category"] != cfg["inbox_dir"]:
             dest_dir = docs / rec["category"]
             suggested = rec.get("suggested_name")
             if suggested and args.rename:

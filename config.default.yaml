@@ -14,14 +14,14 @@ downloads_max_depth: 3
 downloads_exclude:
   - Projects
 
-skip_dirs:
-  - _System
-  - 00_Inbox_Documents
-  - 01_Business
-  - 02_Personal
-  - 03_Reference_Library
-  - 90_Quarantine_Duplicates
-  - 99_Archive
+# skip_dirs is derived dynamically from file_rules.yaml destinations.
+# Override here only if you need a custom list:
+# skip_dirs:
+#   - _System
+#   - 00_Inbox_Documents
+#   - 01_Business
+#   - ...
+skip_dirs: []
 
 keep_in_inbox:
   - Downloads_Triage

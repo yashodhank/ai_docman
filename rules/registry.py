@@ -25,6 +25,8 @@ class RuleRegistry:
         self.fallback_dest: str = self._raw.get("fallback", "00_Inbox_Documents")
         self.context_rules: list[dict[str, Any]] = self._raw.get("context_rules", [])
         self.spiritual_file_keywords: list[str] = self._raw.get("spiritual_file_keywords", [])
+        self.spiritual_pdf_dest: str = self._raw.get("spiritual_pdf_dest", "02_Personal/Education")
+        self.csv_finance_dest: str = self._raw.get("csv_finance_dest", "01_Business/Finance_Accounting")
 
         # Precompile tier patterns sorted by priority
         tiers = self._raw.get("tiers", [])
@@ -33,6 +35,37 @@ class RuleRegistry:
         for tier in tiers:
             compiled = [re.compile(p) for p in tier.get("patterns", [])]
             self._compiled_tiers.append((tier["name"], tier["destination"], compiled))
+
+        # Build discovered categories from all rule destinations
+        self._all_categories: set[str] = set()
+        self._all_categories.update(self.dir_map.values())
+        for _, dest, _ in self._compiled_tiers:
+            self._all_categories.add(dest)
+        for ctx in self.context_rules:
+            if ctx.get("destination"):
+                self._all_categories.add(ctx["destination"])
+        self._all_categories.add(self.dotfiles_dest)
+        self._all_categories.add(self.fallback_dest)
+        self._all_categories.add(self.spiritual_pdf_dest)
+        self._all_categories.add(self.csv_finance_dest)
+
+    @property
+    def all_categories(self) -> list[str]:
+        """All unique destination categories discovered from rules, sorted."""
+        return sorted(self._all_categories)
+
+    @property
+    def top_level_dirs(self) -> list[str]:
+        """Top-level directory names (e.g. '01_Business') derived from rules."""
+        return sorted({cat.split("/")[0] for cat in self._all_categories})
+
+    @property
+    def organized_dirs(self) -> list[str]:
+        """Top-level dirs that represent organized content (excludes inbox/quarantine)."""
+        return sorted(
+            d for d in self.top_level_dirs
+            if d != self.fallback_dest.split("/")[0]
+        )
 
     def classify(self, path: Path, docs_root: Path) -> MoveProposal:
         """Classify a file/directory and return a MoveProposal."""
@@ -72,7 +105,7 @@ class RuleRegistry:
         if not is_dir and path.suffix.lower() == ".pdf":
             name_lower = name.lower()
             if any(kw in name_lower for kw in self.spiritual_file_keywords):
-                cat = "02_Personal/Education"
+                cat = self.spiritual_pdf_dest
                 dest = docs_root / cat
                 return MoveProposal(source=path, destination=dest / name,
                                     category=cat, rule="spiritual_pdf")
@@ -81,7 +114,7 @@ class RuleRegistry:
         if not is_dir and path.suffix.lower() == ".csv":
             name_lower = name.lower()
             if "price" in name_lower or "export" in name_lower:
-                cat = "01_Business/Finance_Accounting"
+                cat = self.csv_finance_dest
                 dest = docs_root / cat
                 return MoveProposal(source=path, destination=dest / name,
                                     category=cat, rule="csv_finance")

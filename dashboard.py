@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from docman.rules.registry import RuleRegistry
 from docman.setup.platform import check_ollama_status, check_exiftool_status, get_python_info
 
 
@@ -91,9 +92,14 @@ def _gather_dashboard_data(cfg: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             pass
 
-    # Storage per category
+    # Storage per category (dynamically discovered from rules)
     category_sizes: dict[str, int] = {}
-    for org_dir in ["01_Business", "02_Personal", "03_Reference_Library", "99_Archive"]:
+    try:
+        registry = RuleRegistry()
+        org_dirs = registry.organized_dirs
+    except Exception:
+        org_dirs = []
+    for org_dir in org_dirs:
         d = docs / org_dir
         if d.exists():
             total = 0
@@ -163,9 +169,9 @@ def _gather_dashboard_data(cfg: dict[str, Any]) -> dict[str, Any]:
     if dup_groups > 0:
         alerts.append({"level": "info", "message": f"{dup_groups} unresolved duplicate groups ({dup_waste / 1_048_576:.0f} MB)"})
 
-    # Naming violations
+    # Naming violations (scan all organized dirs)
     violations = 0
-    for org_dir in ["01_Business", "02_Personal"]:
+    for org_dir in org_dirs:
         d = docs / org_dir
         if d.exists():
             try:

@@ -18,30 +18,19 @@ from docman.rules.registry import RuleRegistry
 
 logger = logging.getLogger("docman")
 
-# Standard categories for classification
-CATEGORIES = [
-    "01_Business/Admin_Legal",
-    "01_Business/Certifications_Compliance",
-    "01_Business/Clients",
-    "01_Business/Finance_Accounting",
-    "01_Business/HR_Team",
-    "01_Business/Projects",
-    "01_Business/Sales_Marketing",
-    "01_Business/Taxation",
-    "01_Business/Vendors_Subscriptions",
-    "02_Personal/Education",
-    "02_Personal/Finance",
-    "02_Personal/Health",
-    "02_Personal/Home_Family",
-    "02_Personal/IDs_Legal",
-    "02_Personal/Photos_Docs_Scans",
-    "02_Personal/Travel",
-    "03_Reference_Library/Manuals_Guides",
-    "03_Reference_Library/Receipts_Warranties",
-    "03_Reference_Library/Templates",
-    "99_Archive",
-    "00_Inbox_Documents",
-]
+
+def _build_categories() -> list[str]:
+    """Build the CATEGORIES list dynamically from file_rules.yaml."""
+    try:
+        registry = RuleRegistry()
+        return registry.all_categories
+    except Exception:
+        logger.debug("Failed to load rules for category discovery, using empty list")
+        return []
+
+
+# Categories are derived from file_rules.yaml destinations at import time
+CATEGORIES = _build_categories()
 
 
 class SmartAnalyzer:
@@ -51,6 +40,9 @@ class SmartAnalyzer:
         self.model = model
         self.use_ai = use_ai and is_ollama_available()
         self.registry = RuleRegistry()
+        # Refresh CATEGORIES from this instance's registry
+        global CATEGORIES
+        CATEGORIES = self.registry.all_categories
 
         if use_ai and not self.use_ai:
             logger.warning("Ollama not available, falling back to rule-based only")
@@ -162,9 +154,9 @@ class SmartAnalyzer:
                 "suggested_name": ai_suggested,
             }
 
-        # Fallback to inbox
+        # Fallback to inbox (use registry's fallback destination)
         return {
-            "category": "00_Inbox_Documents",
+            "category": self.registry.fallback_dest,
             "source": "fallback",
             "confidence": "low",
             "suggested_name": None,

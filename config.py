@@ -19,10 +19,7 @@ _DEFAULTS = {
     "max_hash_size_mb": 500,
     "downloads_max_depth": 3,
     "downloads_exclude": ["Projects"],
-    "skip_dirs": [
-        "_System", "00_Inbox_Documents", "01_Business", "02_Personal",
-        "03_Reference_Library", "90_Quarantine_Duplicates", "99_Archive",
-    ],
+    "skip_dirs": [],  # populated dynamically from file_rules.yaml
     "keep_in_inbox": ["Downloads_Triage", "notes.txt"],
     "log_max_bytes": 10_485_760,  # 10 MB
     "log_backup_count": 10,
@@ -53,6 +50,22 @@ def _validate_paths(cfg: dict[str, Any]) -> None:
             )
 
 
+def _derive_skip_dirs(cfg: dict[str, Any]) -> list[str]:
+    """Derive skip_dirs dynamically from file_rules.yaml destinations."""
+    try:
+        from docman.rules.registry import RuleRegistry
+        registry = RuleRegistry()
+        dirs = set(registry.top_level_dirs)
+    except Exception:
+        logger.debug("Could not load rules for skip_dirs derivation, using fallback")
+        dirs = set()
+    # Always include system/infrastructure dirs
+    dirs.add("_System")
+    dirs.add(cfg.get("inbox_dir", "00_Inbox_Documents").split("/")[0])
+    dirs.add(cfg.get("quarantine_dir", "90_Quarantine_Duplicates").split("/")[0])
+    return sorted(dirs)
+
+
 def load_config(config_path: Path | None = None) -> dict[str, Any]:
     """Load config from YAML, falling back to defaults."""
     cfg = dict(_DEFAULTS)
@@ -66,4 +79,7 @@ def load_config(config_path: Path | None = None) -> dict[str, Any]:
     cfg["downloads_dir"] = str(Path(cfg["downloads_dir"]).expanduser())
     # Validate paths are safe
     _validate_paths(cfg)
+    # Derive skip_dirs from rules if not explicitly set in user config
+    if not cfg["skip_dirs"]:
+        cfg["skip_dirs"] = _derive_skip_dirs(cfg)
     return cfg

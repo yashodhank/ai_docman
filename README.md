@@ -218,15 +218,15 @@ downloads_max_depth: 3             # Max directory depth in Downloads scan
 downloads_exclude:                 # Directories to skip in Downloads
   - Projects
 
-# Directories to skip during classification (already organized)
-skip_dirs:
-  - _System
-  - 00_Inbox_Documents
-  - 01_Business
-  - 02_Personal
-  - 03_Reference_Library
-  - 90_Quarantine_Duplicates
-  - 99_Archive
+# Directories to skip during classification.
+# By default, derived dynamically from file_rules.yaml destinations.
+# Override only if you need a custom list:
+# skip_dirs:
+#   - _System
+#   - 00_Inbox_Documents
+#   - 01_Business
+#   - ...
+skip_dirs: []
 
 # Items to leave in inbox (never classify)
 keep_in_inbox:

@@ -121,9 +121,10 @@ def run_triage(cfg: dict[str, Any], weekly: bool = False,
                               if p.is_file() and p.name != "notes.txt")
         print(f"Inbox backlog: {inbox_count} files")
 
-        # Naming violations
+        # Naming violations (scan all organized dirs dynamically)
         violations = 0
-        for org_dir in ["01_Business", "02_Personal"]:
+        org_dirs = registry.organized_dirs
+        for org_dir in org_dirs:
             d = docs / org_dir
             if d.exists():
                 for f in d.rglob("*"):
