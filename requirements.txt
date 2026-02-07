@@ -1,0 +1,18 @@
+# Core dependencies
+pyyaml>=6.0
+
+# PDF text extraction (install one or both)
+pdfplumber>=0.10.0
+# pymupdf>=1.23.0  # Alternative: pip install pymupdf
+
+# Office document extraction (optional)
+python-docx>=1.0.0
+openpyxl>=3.1.0
+python-pptx>=0.6.21
+
+# OCR - choose based on your needs:
+# easyocr>=1.7.0  # Simpler, PyTorch-based
+# surya-ocr>=0.4.0  # Faster, more accurate (pip install surya-ocr)
+
+# Image handling
+Pillow>=10.0.0

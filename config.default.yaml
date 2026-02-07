@@ -1,0 +1,31 @@
+# docman default configuration
+# Override by passing --config /path/to/custom.yaml
+
+docs_dir: ~/Documents
+downloads_dir: ~/Downloads
+
+log_dir: _System/_Logs
+index_dir: _System/_Indexes
+quarantine_dir: 90_Quarantine_Duplicates
+inbox_dir: 00_Inbox_Documents
+
+max_hash_size_mb: 500
+downloads_max_depth: 3
+downloads_exclude:
+  - Projects
+
+skip_dirs:
+  - _System
+  - 00_Inbox_Documents
+  - 01_Business
+  - 02_Personal
+  - 03_Reference_Library
+  - 90_Quarantine_Duplicates
+  - 99_Archive
+
+keep_in_inbox:
+  - Downloads_Triage
+  - notes.txt
+
+log_max_bytes: 10485760   # 10 MB
+log_backup_count: 10

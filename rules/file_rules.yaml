@@ -1,0 +1,750 @@
+# file_rules.yaml — Single source of truth for all classification rules
+# Merged from full_organize.py FILE_RULES + DIR_MAP + inbox_classify.py EXPLICIT + context rules
+
+directory_mappings:
+  # Finance_Accounting
+  "Bank-2019-2020": "01_Business/Finance_Accounting"
+  "CloudProvider": "01_Business/Finance_Accounting"
+  "DomainRegistrar": "01_Business/Finance_Accounting"
+  "Bank_CC_2019-2020": "01_Business/Finance_Accounting"
+  "Bank_CC_2022-2023": "01_Business/Finance_Accounting"
+  "BankA_BankB_2020-2021": "01_Business/Finance_Accounting"
+  "BankB_Suspense": "01_Business/Finance_Accounting"
+  "BankB_TransactionHistory-2010-2023": "01_Business/Finance_Accounting"
+  "bankb": "01_Business/Finance_Accounting"
+  "Internet-Bills": "01_Business/Finance_Accounting"
+  "Family-bills": "01_Business/Finance_Accounting"
+  "Tax": "01_Business/Finance_Accounting"
+  "ITR-19-20": "01_Business/Finance_Accounting"
+  "BillingSystem_Reports_M": "01_Business/Finance_Accounting"
+  "HostingProvider": "01_Business/Finance_Accounting"
+  "Accounting Books": "01_Business/Finance_Accounting"
+  # Projects
+  "ProjectAlpha": "01_Business/Projects"
+  "ProjectBeta": "01_Business/Projects"
+  "ProjectGamma-Data": "01_Business/Projects"
+  "DomainTransfer-Auth-Letters": "01_Business/Projects"
+  "Networking": "01_Business/Projects"
+  "VoIP": "01_Business/Projects"
+  "StaticSiteGen": "01_Business/Projects"
+  "CloudProject_data": "01_Business/Projects"
+  "Projects": "01_Business/Projects"
+  # Admin_Legal
+  "NDAs": "01_Business/Admin_Legal"
+  # Clients
+  "ClientA": "01_Business/Clients"
+  "ClientB": "01_Business/Clients"
+  "ClientCReports": "01_Business/Clients"
+  # Personal/Health
+  "Formula & Treatments - Neurotherapy_files": "02_Personal/Health"
+  "Modern treatment for all Disease - Neurotherapy_files": "02_Personal/Health"
+  "NatureCure_Notes": "02_Personal/Health"
+  # Personal/Home_Family
+  "FamilyDocs": "02_Personal/Home_Family"
+  "Gift_Registry": "02_Personal/Home_Family"
+  # Personal/Education
+  "EducationTrust": "02_Personal/Education"
+  "SpiritualStudy": "02_Personal/Education"
+  "OnlineStudy": "02_Personal/Education"
+  "AkashicRecords": "02_Personal/Education"
+  "Cosmology": "02_Personal/Education"
+  "Tantra": "02_Personal/Education"
+  "Reading": "02_Personal/Education"
+  # Personal/Photos_Docs_Scans
+  "Images": "02_Personal/Photos_Docs_Scans"
+  "PhoneExport-2024-11-17": "02_Personal/Photos_Docs_Scans"
+  # Reference/Manuals_Guides
+  "IDE-Patch-Help_files": "03_Reference_Library/Manuals_Guides"
+  "Obsidian Vault": "03_Reference_Library/Manuals_Guides"
+  "Zettlr Tutorial": "03_Reference_Library/Manuals_Guides"
+  "Notes": "03_Reference_Library/Manuals_Guides"
+  # Reference/Receipts_Warranties
+  "Receipts.receipts": "03_Reference_Library/Receipts_Warranties"
+  # Archive
+  "Documents - OldMachine": "99_Archive"
+  "Bitbucket": "99_Archive"
+  "Business-OnePile.onepile": "99_Archive"
+  "Personal-OnePile.onepile": "99_Archive"
+  "Cake": "99_Archive"
+  "Google": "99_Archive"
+  "News": "99_Archive"
+  "untitled folder": "99_Archive"
+  "Reference Data.numbers": "99_Archive"
+  "Hookmark": "99_Archive"
+  "JumpDesktop": "99_Archive"
+  "NetSpot Backups": "99_Archive"
+  "WebEx": "99_Archive"
+  "Wondershare": "99_Archive"
+  "Zoom": "99_Archive"
+
+tiers:
+  # TIER 1 - Highly specific personal patterns (must fire first)
+
+  - name: personal_ids_legal
+    priority: 100
+    destination: "02_Personal/IDs_Legal"
+    patterns:
+      - "(?i)^Aadhaar"
+      - "(?i)^national_id"
+      - "(?i)JohnDoe_NationalID"
+      - "(?i)JD_NationalID"
+      - "(?i)JD_Driving"
+      - "(?i)DrivingLicense"
+      - "(?i)JohnDoe_Driving"
+      - "(?i)Self_Declaration"
+      - "(?i)John\\.Doe\\.Smith"
+      - "(?i)^PCC"
+      - "(?i)Appointment.Reciept.PCC"
+      - "(?i)Payment.Receipt.PCC"
+      - "(?i)^LEGAL_PETITION"
+      - "(?i)Transfer.Petition"
+      - "(?i)Parent.-.Legacy"
+      - "(?i)Wedding_certificate"
+      - "(?i)APPLICATION.*REMITTANCE"
+
+  - name: personal_finance
+    priority: 200
+    destination: "02_Personal/Finance"
+    patterns:
+      - "(?i)^Binance"
+      - "(?i)^Bitcoin"
+      - "(?i)^BTC"
+      - "(?i)^Crypto"
+      - "(?i)^CryptoExchange"
+      - "(?i)crypto_exchange"
+      - "(?i)^CoinTracker"
+      - "(?i)^koinly"
+      - "(?i)koinx"
+      - "(?i)^XRP"
+      - "(?i)HF.Investment"
+      - "(?i)Coin_Purchase"
+      - "(?i)JS.Crypto"
+      - "(?i)JS.CoinTracker"
+      - "(?i)JaneSmith_Crypto"
+      - "(?i)JaneSmith_Bank"
+      - "(?i)JaneSmith_2019"
+      - "(?i)JaneSmith.CryptoExchange"
+      - "(?i)JohnDoe_Federal"
+      - "(?i)JohnDoe_BankA"
+      - "(?i)JohnDoe_BankB"
+      - "(?i)CustomSTMT"
+      - "(?i)^Federal"
+      - "(?i)pass.trials"
+      - "(?i)password_export"
+      - "(?i)^LastP"
+      - "(?i)lastpass_export"
+      - "(?i)^payouts"
+      - "(?i)CCD.Transactions"
+      - "(?i)bitconnect"
+      - "(?i)^My.BTC"
+      - "(?i)EXODUS.*EDEN"
+      - "(?i)phonepe.*qrcode"
+      - "(?i)RentPaid"
+      - "(?i)LINKED.LOANS"
+      - "(?i)cloud.*charge.*mystery"
+      - "(?i)account_statement.*BankA.*JohnDoe"
+
+  - name: personal_home_family
+    priority: 300
+    destination: "02_Personal/Home_Family"
+    patterns:
+      - "(?i)HappyBirthdayMom"
+      - "(?i)parent_hometown"
+      - "(?i)family_hometown"
+      - "(?i)FamilyMember"
+      - "(?i)FamilyEvent"
+      - "(?i)spouse.telecom"
+      - "(?i)SarahSmith_"
+      - "(?i)Flat_Address"
+      - "(?i)Home_Address"
+      - "(?i)CityName"
+      - "(?i)Garbage.Issue"
+      - "(?i)Street.lamps"
+      - "(?i)Utility_Bill"
+      - "(?i)electric_bill"
+      - "(?i)idea.broadband"
+      - "(?i)Idea_Broadband"
+      - "(?i)Idea.BB"
+      - "(?i)IdeaBB"
+      - "(?i)ideabb"
+      - "(?i)railwire"
+      - "(?i)letter_meter"
+      - "(?i)EmilyDoe_Bank"
+      - "(?i)EmilyDoe_Banner"
+      - "(?i)Shopping.EmilyDoe"
+      - "(?i)EmilyDoe.Social"
+      - "(?i)cover_spouse"
+      - "(?i)Moms_Phone"
+      - "(?i)application_reference"
+      - "(?i)TwoWheeler"
+      - "(?i)Cooperative.Bank"
+      - "(?i)FamilyMember2_document"
+      - "(?i)SarahSmith_.*noc"
+
+  - name: personal_health
+    priority: 400
+    destination: "02_Personal/Health"
+    patterns:
+      - "(?i)Neurotherapy"
+      - "(?i)Blood_Markers"
+      - "(?i)Medulla_Therapy"
+      - "(?i)physiology_questions"
+      - "(?i)Gut.*Psychology"
+      - "(?i)Healing.Mudras"
+      - "(?i)Seven.Mudras"
+      - "(?i)healing.power"
+      - "(?i)3Months_Weekly_Plan_for_Herbs"
+      - "(?i)Weekly_Plan_for_Herbs"
+      - "(?i)eGFR_Kidney"
+      - "(?i)JaneSmith.LTF"
+      - "(?i)Modern.treatment.*Neurotherapy"
+      - "(?i)left.hand"
+      - "(?i)right.hand"
+      - "(?i)Dandelion.Weed"
+      - "(?i)card_paralysis_ayurvedic"
+
+  - name: personal_education
+    priority: 500
+    destination: "02_Personal/Education"
+    patterns:
+      - "(?i)swamiji"
+      - "(?i)ManifestingShaktis"
+      - "(?i)Complete_Works_of_Swami_Vivekananda"
+      - "(?i)SanskritNonTranslatables"
+      - "(?i)BeingDifferent"
+      - "(?i)Grand_Narrative"
+      - "(?i)Ingo_Swann"
+      - "(?i)Scaramanga"
+      - "(?i)Elementary.Proof"
+      - "(?i)Real.Hinduism.Decoded"
+      - "(?i)UP.-.Infinity.Token"
+      - "(?i)Navaratri"
+      - "(?i)padapuja"
+      - "(?i)SpiritualTeacher"
+      - "(?i)spiritual.logo"
+      - "(?i)SpiritualOrg"
+      - "(?i)rc206_AngularJS"
+      - "(?i)result.paper1"
+      - "(?i)PSM.*Participant"
+      - "(?i)zoom\\.us.*satsang"
+      - "(?i)Program.Detail.Schedule"
+      - "(?i)Travel.Guidence"
+      - "(?i)Temple.Shivapooja"
+      - "(?i)hindi\\.mp4$"
+      - "(?i)shiva_lingam"
+      - "(?i)Sri_Ananada"
+      - "(?i)Sri_Dakshinamurthy"
+      - "(?i)Sri_Mahalakshmi"
+      - "(?i)Sri_Rajarajeshwari"
+      - "(?i)Sri_Subrahmanya"
+      - "(?i)sri_yantra"
+      - "(?i)sri.yantram"
+      - "(?i)Venkateshwara_01"
+      - "(?i)YT.Live.Assets"
+      - "(?i)UNReport.Tweets"
+      - "(?i)Temple_Photo"
+      - "(?i)Zee_Media"
+      - "(?i)Kapil_Muni"
+      - "(?i)Moolavar_01"
+      - "(?i)Nandishwara_01"
+      - "(?i)EducationTrust\\.zip"
+      - "(?i)NHU.DSA"
+      - "(?i)NHU.SPA"
+      - "(?i)smm_plan_spiritual"
+
+  - name: personal_photos_scans
+    priority: 600
+    destination: "02_Personal/Photos_Docs_Scans"
+    patterns:
+      - "(?i)user_marriage"
+      - "(?i)jd_profile"
+      - "(?i)JD_Signature"
+      - "(?i)Dr\\.Smith"
+      - "(?i)^10623578_"
+      - "(?i)JohnDoe_Arc"
+      - "(?i)^JohnDoe\\."
+      - "(?i)WhatsApp.Image"
+      - "(?i)WhatsApp.Chat"
+      - "(?i)BobJohnson"
+      - "(?i)^Women\\.zip$"
+      - "(?i)JD.Docs\\.rar"
+      - "(?i)anydesk\\d+"
+
+  - name: personal_travel
+    priority: 700
+    destination: "02_Personal/Travel"
+    patterns:
+      - "(?i)^Ticket"
+      - "(?i)AliceSmith.*Railway"
+      - "(?i)AliceSmith.*Ticket"
+      - "(?i)Zoomcar"
+      - "(?i)City_Map"
+      - "(?i)Shipping.Label_Travel"
+      - "(?i)^Tour\\.pdf$"
+
+  # TIER 2 - Reference library (before "invoice" catches)
+
+  - name: reference_manuals
+    priority: 800
+    destination: "03_Reference_Library/Manuals_Guides"
+    patterns:
+      - "(?i)^JetBrain"
+      - "(?i)MySQL.master.slave"
+      - "(?i)Ruby_on_Rails"
+      - "(?i)ImportJSON"
+      - "(?i)Reseller.Central"
+      - "(?i)^Vesta"
+      - "(?i)How.to.Schedule.*Post"
+      - "(?i)How.CryptoExchange"
+
+  - name: reference_receipts
+    priority: 900
+    destination: "03_Reference_Library/Receipts_Warranties"
+    patterns:
+      - "(?i)Apple_Watch_Receipt"
+      - "(?i)Invoice_Apple"
+      - "(?i)Print.Order"
+      - "(?i)Transaction_Reciept"
+      - "(?i)Vendor_Invoice"
+      - "(?i)Vendor..Payment"
+      - "(?i)motorider_print"
+      - "(?i)EventFest.Refunds"
+
+  - name: reference_templates
+    priority: 1000
+    destination: "03_Reference_Library/Templates"
+    patterns:
+      - "(?i)Domain_Name_Auth_Request_Letter_Sample"
+      - "(?i)Vendor.*Registration.*Form"
+      - "(?i)Managed.Cloud.Hosting.*RFP.Template"
+      - "(?i)label.shipping"
+      - "(?i)Address_lables"
+      - "(?i)packing.price"
+
+  # TIER 3 - Specific business patterns
+
+  - name: business_taxation
+    priority: 1100
+    destination: "01_Business/Taxation"
+    patterns:
+      - "(?i)Tax_Comparison"
+      - "(?i)JohnDoe_Computation.of.Income"
+      - "(?i)^ITR"
+
+  - name: business_admin_legal
+    priority: 1200
+    destination: "01_Business/Admin_Legal"
+    patterns:
+      - "(?i)^NDA"
+      - "(?i)^nda"
+      - "(?i)Confidentiality.Agreement"
+      - "(?i)Return.Agreement"
+      - "(?i)Service.Agreement"
+      - "(?i)AcmeTech.-.NDA"
+      - "(?i)AcmeTech.*NDA"
+      - "(?i)AcmeTech.Current.Account"
+      - "(?i)it.support.agreement"
+      - "(?i)MSP_Complete_Terms"
+      - "(?i)hosting.terms"
+      - "(?i)plus.server.contract"
+      - "(?i)Microsoft_PartnerProgram"
+      - "(?i)^Udyam"
+      - "(?i)^eIEC"
+      - "(?i)PanProcessServ"
+      - "(?i)Shop.Act"
+      - "(?i)Insurance_Life"
+      - "(?i)LIC_policy"
+      - "(?i)Trader.Investment.Agreement"
+      - "(?i)RULE.107.*REGULATION"
+      - "(?i)LEGAL.*LAW.*PROTECTION"
+      - "(?i)Donation.Receipt"
+      - "(?i)Bank.Credit_Card_Terms"
+
+  - name: business_sales_marketing
+    priority: 1300
+    destination: "01_Business/Sales_Marketing"
+    patterns:
+      - "(?i)Pay.Per.Click"
+      - "(?i)PPC.Plans"
+      - "(?i)Marketing.Manager"
+      - "(?i)The.Ultimate.Guide"
+      - "(?i)brennanit"
+      - "(?i)SocialPosts"
+      - "(?i)FB.Post"
+      - "(?i)FB.Notes"
+
+  - name: business_hr_team
+    priority: 1400
+    destination: "01_Business/HR_Team"
+    patterns:
+      - "(?i)^Resume"
+      - "(?i)Candidate_Scoring"
+      - "(?i)JohnDoe.Timesheet"
+      - "(?i)Manager.-.PWOS"
+
+  - name: business_clients
+    priority: 1500
+    destination: "01_Business/Clients"
+    patterns:
+      - "(?i)^ClientD"
+      - "(?i)^ClientE"
+      - "(?i)ClientA_Contact"
+      - "(?i)ClientARef"
+      - "(?i)ClientB_Contact"
+      - "(?i)Resume_Candidate"
+      - "(?i)^JobDone"
+      - "(?i)^training_provider"
+      - "(?i)^ClientF"
+      - "(?i)INV.1001_"
+      - "(?i)^Document.\\d+\\.pdf$"
+      - "(?i)^Report.\\d+\\.pdf$"
+      - "(?i)Media.Coverage.Clips"
+      - "(?i)school_reference"
+
+  - name: business_vendors
+    priority: 1600
+    destination: "01_Business/Vendors_Subscriptions"
+    patterns:
+      - "(?i)Contabo.VPS"
+      - "(?i)Contabo.servers"
+      - "(?i)Contabo.Spending"
+      - "(?i)Contabo_price"
+      - "(?i)Contabo.INE"
+      - "(?i)^Hetzner_"
+      - "(?i)^Scaleway"
+      - "(?i)^e2e"
+      - "(?i)^Vultr"
+      - "(?i)RC.Price"
+      - "(?i)RaspberryPi"
+      - "(?i)Mac_M1_Hosting"
+      - "(?i)MacMini"
+      - "(?i)Dedicated.server"
+      - "(?i)^reliablesite"
+      - "(?i)atlantic\\.net"
+      - "(?i)ssm_compared"
+      - "(?i)SA.SharedHosting"
+      - "(?i)SiteLock"
+      - "(?i)^znetindia"
+      - "(?i)^godaddy"
+      - "(?i)LuxCloud"
+      - "(?i)^h9\\."
+
+  - name: business_certifications
+    priority: 1700
+    destination: "01_Business/Certifications_Compliance"
+    patterns:
+      - "(?i)_acmetech_com\\.ca$"
+      - "(?i)_acmetech_com\\.crt$"
+      - "(?i)admission_university"
+      - "(?i)MSPatcher1"
+
+  - name: business_projects
+    priority: 1800
+    destination: "01_Business/Projects"
+    patterns:
+      - "(?i)^AnyLED"
+      - "(?i)^anyled"
+      - "(?i)^BOMConfig"
+      - "(?i)^ClientBOM"
+      - "(?i)Client.budget"
+      - "(?i)^ERPNext"
+      - "(?i)^MIDAS"
+      - "(?i)erp.requirement"
+      - "(?i)City.Project.Features"
+      - "(?i)managed_service_cluster"
+      - "(?i)managed.services.cost"
+      - "(?i)email.migration"
+      - "(?i)proxmox"
+      - "(?i)Servers.Proposal"
+      - "(?i)Server.Management"
+      - "(?i)Server.Optimization"
+      - "(?i)DigiHelp"
+      - "(?i)smm_panel"
+      - "(?i)smmfollows"
+      - "(?i)streaming"
+      - "(?i)QuoteWerks"
+      - "(?i)PSM.L3"
+      - "(?i)PSM3.S3"
+      - "(?i)h9_reseller"
+      - "(?i)^tbbpl"
+      - "(?i)list_locked_domains"
+      - "(?i)domains_export"
+      - "(?i)domains_list"
+      - "(?i)domains.renewal"
+      - "(?i)DomainPricing"
+      - "(?i)registrar\\.com_domain"
+      - "(?i)Project_experiments"
+      - "(?i)^Nagios"
+      - "(?i)^nagios"
+      - "(?i)acmetech.projects"
+      - "(?i)AcmeTech.Domains"
+      - "(?i)AcmeTech.Freelance"
+      - "(?i)SPN_Matter"
+      - "(?i)acmetechDB\\.db"
+      - "(?i)acmetech.books\\.db"
+      - "(?i)AcmeTech.-.Quote"
+      - "(?i)visara"
+      - "(?i)BISO.Cluster"
+      - "(?i)client_forms"
+      - "(?i)server.log"
+      - "(?i)IT.Support.Plans"
+      - "(?i)ManagedHostingServiceLevel"
+      - "(?i)ProductConfig_"
+      - "(?i)Router_compared"
+      - "(?i)Custom_PC_Hardware"
+      - "(?i)import_file_demo"
+      - "(?i)^cart_\\d+"
+      - "(?i)Software_Vendor"
+      - "(?i)CloudGPU_"
+      - "(?i)Order_workflow"
+      - "(?i)For_Generating_Order"
+      - "(?i)Data.Entry\\.pages$"
+      - "(?i)Copy.of.Expertus"
+      - "(?i)Expertus.upload"
+      - "(?i)consultant_ref"
+      - "(?i)SENSOR.*Monitor"
+      - "(?i)SENSOR.*LED"
+
+  - name: business_projects_brand
+    priority: 1900
+    destination: "01_Business/Projects"
+    patterns:
+      - "(?i)acmetech.*logo"
+      - "(?i)acmetech.*banner"
+      - "(?i)AcmeTech_Cloud_Backup_Logo"
+      - "(?i)acmetech.w.*logo"
+      - "(?i)cloudservice.logo"
+      - "(?i)^GCR_"
+      - "(?i)brand.logo"
+      - "(?i)company_logo"
+      - "(?i)hr.icon.brand"
+      - "(?i)favicon.cloudservice"
+      - "(?i)sa.cloud.*icon"
+      - "(?i)Traffic.Police.New.Logo"
+      - "(?i)Neon.CityName"
+      - "(?i)Anonymous_emblem"
+      - "(?i)LDA.Gmail"
+      - "(?i)nurse_doc_print"
+      - "(?i)PoS_Tax_Invoice"
+      - "(?i)^224x343"
+      - "(?i)^3-1\\.png$"
+      - "(?i)^a4.hey"
+      - "(?i)layouts_designer"
+      - "(?i)Modules.Dev.anyled"
+      - "(?i)unicorn_print"
+      - "(?i)rainbows_print"
+      - "(?i)acmetech.cloud.hosting"
+      - "(?i)acmetech.500px"
+      - "(?i)acmetech.twitter"
+      - "(?i)business_community"
+      - "(?i)COMPANY.*ERPNext.*Letterhead"
+      - "(?i)company.*erpnext.*letterhead"
+
+  # TIER 4 - Broad business finance catch-all
+
+  - name: business_finance_broad
+    priority: 2000
+    destination: "01_Business/Finance_Accounting"
+    patterns:
+      - "(?i)(?<![a-z_])bank(?![a-z_])"
+      - "(?i)bankA_ref"
+      - "(?i)bankB_ref"
+      - "(?i)icici"
+      - "(?i)contabo"
+      - "(?i)hetzner"
+      - "(?i)invoice"
+      - "(?i)payment"
+      - "(?i)transaction"
+      - "(?i)billing"
+      - "(?i)cc_2022"
+      - "(?i)cashflow"
+      - "(?i)creditcard"
+      - "(?i)billing_transaction"
+      - "(?i)billing\\.com_payment"
+      - "(?i)BillingSystem\\.com_Payment"
+      - "(?i)payumoney"
+      - "(?i)settlement"
+      - "(?i)e2e.cloud"
+      - "(?i)vultr"
+      - "(?i)dedicated.server"
+      - "(?i)gsuite.calc"
+      - "(?i)gsuite.seller"
+      - "(?i)g.suite.pricing"
+      - "(?i)google_workspace_pricing"
+      - "(?i)online.net"
+      - "(?i)provider_payment"
+      - "(?i)server_plans"
+      - "(?i)reliablesite"
+      - "(?i)clients_2025"
+      - "(?i)clients.payments"
+      - "(?i)clients\\.hosting"
+      - "(?i)invoices_export"
+      - "(?i)spendings"
+      - "(?i)billing_acmetech"
+      - "(?i)acmetech.cancelled.cheque"
+      - "(?i)AUTHCODE_AcmeTech"
+      - "(?i)lead_source"
+      - "(?i)OpTransactionHistory"
+      - "(?i)Live_spending"
+      - "(?i)Transactions_List"
+      - "(?i)BillingSystem_Reports\\.zip"
+      - "(?i)frappe.books"
+      - "(?i)invoices.storage"
+
+  # TIER 5 - Education content / DB dumps
+
+  - name: archive_db_dumps
+    priority: 2100
+    destination: "99_Archive"
+    patterns:
+      - "(?i)\\.sql$"
+      - "(?i)\\.postman_collection\\.json$"
+      - "(?i)education\\.org.*dump"
+      - "(?i)CloudGPU_estimate"
+
+  - name: education_spiritual_catchall
+    priority: 2200
+    destination: "02_Personal/Education"
+    patterns:
+      - "(?i)spiritual_org"
+      - "(?i)SpiritualStudy"
+      - "(?i)SpiritualCenter"
+
+  # TIER 6 - Archive catch-all
+
+  - name: archive_catchall
+    priority: 2300
+    destination: "99_Archive"
+    patterns:
+      - "(?i)CFNetworkDownload_"
+      - "(?i)Automated.whoisservers"
+      - "(?i)billing_whoissearch"
+      - "(?i)whois_urls"
+      - "(?i)bookmarks"
+      - "(?i)chrome_bookmarks"
+      - "(?i)diagnostics_log"
+      - "(?i)panel_ini"
+      - "(?i)plesk_"
+      - "(?i)cool_svg"
+      - "(?i)^108.067.187"
+      - "(?i)^172.135.566"
+      - "(?i)^Untitled\\."
+      - "(?i)^text.2\\."
+      - "(?i)^Discussion\\."
+      - "(?i)^vnc\\.zip$"
+      - "(?i)Splash_BLUR"
+      - "(?i)^app.bg"
+      - "(?i)^aniwheel"
+      - "(?i)^wom.ggg"
+      - "(?i)^DU54FF9"
+      - "(?i)^pre\\.sh$"
+      - "(?i)^build\\.sh$"
+      - "(?i)Cloud_Loadbalancing"
+      - "(?i)^imou_"
+      - "(?i)^IPC"
+      - "(?i)smartpss"
+      - "(?i)ExportFile"
+      - "(?i)^LP.JohnDoe"
+      - "(?i)^cams\\."
+      - "(?i)local_ip_scan"
+      - "(?i)IPC.IP.Range"
+      - "(?i)ip_scan"
+      - "(?i)ipcam"
+      - "(?i)imou_cam"
+      - "(?i)vmi855896"
+      - "(?i)gsuite.mx"
+      - "(?i)hotel_booking"
+      - "(?i)Home.Connected.Devices"
+      - "(?i)Devices_Export"
+      - "(?i)response.cloudprovider"
+      - "(?i)Contact_Name"
+      - "(?i)^users\\."
+      - "(?i)users.company"
+      - "(?i)^mails\\."
+      - "(?i)Contacts_Import"
+      - "(?i)list_mode_export"
+      - "(?i)domain_extensions"
+      - "(?i)^abusers"
+      - "(?i)^Verified"
+      - "(?i)^CityRef"
+      - "(?i)^TNG"
+      - "(?i)urls_dump"
+      - "(?i)tableConvert"
+      - "(?i)inventory_"
+      - "(?i)^secret"
+      - "(?i)^2019.06.20"
+      - "(?i)vmware_versions"
+      - "(?i)ssh_config$"
+      - "(?i)ssh_servers$"
+      - "(?i)Messaging.username"
+      - "(?i)Time.Capsule\\.baseconfig"
+      - "(?i)Terminal.Saved.Output"
+      - "(?i)fusion.stats"
+      - "(?i)^15769161008"
+      - "(?i)JD.Laptop.Windows"
+      - "(?i)JohnDoe.*Public\\.asc$"
+      - "(?i)JohnDoe.*HomeTown.*\\.ics$"
+      - "(?i)DeviceConfig.*\\.backup$"
+      - "(?i)html_code_"
+      - "(?i)GardenProject"
+      - "(?i)recovery_codes"
+      - "(?i)private_key_"
+      - "(?i)google.apps.security.*whitepaper"
+      - "(?i)Installation.Instructions"
+      - "(?i)LinuxManual"
+      - "(?i)^logo\\d*\\.(png|jpg|psd)$"
+      - "(?i)logo_with_text"
+      - "(?i)logo2h.fontfind"
+      - "(?i)NatureCastle"
+      - "(?i)cloud.server.banner"
+      - "(?i)external.holiday.greeting"
+      - "(?i)made.in.us.altcoin"
+      - "(?i)psm.banner.update"
+      - "(?i)billing.lookup"
+      - "(?i)agent_membership"
+      - "(?i)^\\d+\\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{4}\\s+at"
+      - "(?i)^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+
+context_rules:
+  - signal: {has_subdirs: ["sites", "themes"]}
+    destination: "01_Business/Projects"
+    note: "Static site generator"
+
+  - signal: {has_subdirs: ["config", "themes"]}
+    destination: "01_Business/Projects"
+    note: "Static site generator (config variant)"
+
+  - signal: {has_children_named: ["preferences", "cache", "logs", "viewer", "mobiletrans", "surveyprojects"]}
+    destination: "99_Archive"
+    note: "App data directory"
+
+  - signal: {child_keywords: ["guru", "mantra", "dharma", "vedic", "tantra", "yoga", "meditation", "swami", "akashic", "cosmology", "blessing", "spiritual", "mukti", "puja"]}
+    destination: "02_Personal/Education"
+    note: "Spiritual/philosophical content"
+
+  - signal: {all_media_small: true}
+    destination: "02_Personal/Education"
+    note: "Small all-media directory"
+
+  - signal: {empty_dir: true}
+    destination: "99_Archive"
+    note: "Empty directory"
+
+# Spiritual file keywords for individual PDF detection
+spiritual_file_keywords:
+  - guru
+  - geeta
+  - gita
+  - mantra
+  - dharma
+  - vedic
+  - tantra
+  - yoga
+  - swami
+  - mukti
+  - puja
+  - bhrigu
+  - navagraha
+
+dotfiles: "99_Archive"
+fallback: "00_Inbox_Documents"
