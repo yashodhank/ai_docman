@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-MEDIA_EXTENSIONS = {".pdf", ".mp4", ".mp3", ".m4a", ".jpg", ".jpeg", ".png", ""}
+MEDIA_EXTENSIONS = {".pdf", ".mp4", ".mp3", ".m4a", ".jpg", ".jpeg", ".png"}
 
 
 def check_context_rules(item: Path, rules: list[dict[str, Any]]) -> str | None:
@@ -45,10 +45,8 @@ def check_context_rules(item: Path, rules: list[dict[str, Any]]) -> str | None:
                         count += 1
                         if count > 500:
                             break
-                if exts.issubset(MEDIA_EXTENSIONS):
-                    fc = sum(1 for _ in item.rglob("*"))
-                    if fc < 20:
-                        return rule["destination"]
+                if count > 0 and exts.issubset(MEDIA_EXTENSIONS) and count < 20:
+                    return rule["destination"]
             except PermissionError:
                 continue
 

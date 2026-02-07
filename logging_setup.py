@@ -60,3 +60,9 @@ class CSVSummaryWriter:
         if self._file:
             self._file.close()
         return self._path
+
+    def __enter__(self) -> CSVSummaryWriter:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()

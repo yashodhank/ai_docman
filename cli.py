@@ -274,18 +274,24 @@ def cmd_smart_classify(args: argparse.Namespace) -> None:
                 print(f"    renamed: {dst.name}")
             print()
     else:
+        moved_count = 0
         for src, dst, cat, source, conf in moves:
-            sha = sha256_file(src) if src.is_file() else "directory"
-            size = src.stat().st_size if src.is_file() and src.exists() else 0
-            atomic_move(src, dst)
-            log_operation(logger, op="smart_move", src=str(src), dst=str(dst),
-                          sha256=sha, size=size, category=cat,
-                          source=source, confidence=conf,
-                          dry_run=False, status="ok")
-            if args.verbose:
-                print(f"  {src.name} -> {cat}/")
+            try:
+                sha = sha256_file(src) if src.is_file() else "directory"
+                size = src.stat().st_size if src.is_file() and src.exists() else 0
+                atomic_move(src, dst)
+                log_operation(logger, op="smart_move", src=str(src), dst=str(dst),
+                              sha256=sha, size=size, category=cat,
+                              source=source, confidence=conf,
+                              dry_run=False, status="ok")
+                moved_count += 1
+                if args.verbose:
+                    print(f"  {src.name} -> {cat}/")
+            except Exception as e:
+                logger.error("Failed to move %s: %s", src, e)
+                print(f"  ERROR: {src.name}: {e}")
 
-        print(f"\n=== Done: {len(moves)} items moved ===")
+        print(f"\n=== Done: {moved_count} items moved ===")
 
 
 def cmd_suggest_rename(args: argparse.Namespace) -> None:

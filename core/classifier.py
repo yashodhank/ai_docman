@@ -17,7 +17,7 @@ def run_classify(cfg: dict[str, Any], scope: str = "all",
                  dry_run: bool = False, verbose: bool = False) -> None:
     """Classify loose files.
 
-    scope: "all" — top-level ~/Documents
+    scope: "all" — top-level ~/Documents + inbox + downloads
            "inbox" — items in 00_Inbox_Documents
            "downloads" — items in ~/Downloads (top-level, excluding Projects)
     """
@@ -36,14 +36,14 @@ def run_classify(cfg: dict[str, Any], scope: str = "all",
             p for p in sorted(docs.iterdir())
             if p.name not in skip and p.name != ".DS_Store"
         )
-    if scope == "inbox":
+    if scope in ("all", "inbox"):
         inbox = docs / cfg["inbox_dir"]
         if inbox.exists():
             items.extend(
                 p for p in sorted(inbox.iterdir())
                 if p.name not in keep_in_inbox and p.name != ".DS_Store"
             )
-    if scope == "downloads":
+    if scope in ("all", "downloads"):
         dl_exclude = set(cfg.get("downloads_exclude", []))
         if downloads.exists():
             items.extend(
@@ -80,20 +80,28 @@ def run_classify(cfg: dict[str, Any], scope: str = "all",
         csv_writer.open(["timestamp", "source", "destination", "category", "rule"])
         from datetime import datetime
         ts = datetime.now().isoformat()
+        moved_count = 0
 
-        for src, dst, cat, rule in moves:
-            sha = sha256_file(src) if src.is_file() else "directory"
-            size = src.stat().st_size if src.is_file() and src.exists() else 0
-            atomic_move(src, dst)
-            csv_writer.writerow([ts, str(src), str(dst), cat, rule])
-            log_operation(logger, op="move", src=str(src), dst=str(dst),
-                          sha256=sha, size=size, category=cat, rule=rule,
-                          dry_run=False, status="ok")
-            if verbose:
-                print(f"  {src.name} -> {cat}/")
+        try:
+            for src, dst, cat, rule in moves:
+                try:
+                    sha = sha256_file(src) if src.is_file() else "directory"
+                    size = src.stat().st_size if src.is_file() and src.exists() else 0
+                    atomic_move(src, dst)
+                    csv_writer.writerow([ts, str(src), str(dst), cat, rule])
+                    log_operation(logger, op="move", src=str(src), dst=str(dst),
+                                  sha256=sha, size=size, category=cat, rule=rule,
+                                  dry_run=False, status="ok")
+                    moved_count += 1
+                    if verbose:
+                        print(f"  {src.name} -> {cat}/")
+                except Exception as e:
+                    logger.error("Failed to move %s: %s", src, e)
+                    print(f"  ERROR: {src.name}: {e}")
+        finally:
+            csv_path = csv_writer.close()
 
-        csv_path = csv_writer.close()
-        print(f"\n=== Done: {len(moves)} items moved ===")
+        print(f"\n=== Done: {moved_count} items moved ===")
         print(f"Log: {csv_path}")
         log_operation(logger, op="classify", scope=scope,
-                      items_moved=len(moves), dry_run=False, status="ok")
+                      items_moved=moved_count, dry_run=False, status="ok")

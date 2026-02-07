@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("docman")
 
 
 def get_file_metadata(path: Path) -> dict[str, Any]:
@@ -57,24 +60,26 @@ def extract_text_pdf(path: Path, max_pages: int = 10) -> str:
             return "\n\n".join(text_parts)
     except ImportError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("pdfplumber extraction failed for %s: %s", path.name, e)
 
     # Fallback to PyMuPDF
     try:
         import fitz  # PyMuPDF
         doc = fitz.open(path)
-        for i, page in enumerate(doc[:max_pages]):
-            text = page.get_text()
-            if text.strip():
-                text_parts.append(text)
-        doc.close()
+        try:
+            for i, page in enumerate(doc[:max_pages]):
+                text = page.get_text()
+                if text.strip():
+                    text_parts.append(text)
+        finally:
+            doc.close()
         if text_parts:
             return "\n\n".join(text_parts)
     except ImportError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("PyMuPDF extraction failed for %s: %s", path.name, e)
 
     return ""
 
@@ -96,8 +101,8 @@ def extract_text_image(path: Path) -> str:
             return "\n".join(line.text for line in results[0].text_lines)
     except ImportError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Surya OCR failed for %s: %s", path.name, e)
 
     # Fallback to EasyOCR
     try:
@@ -108,8 +113,8 @@ def extract_text_image(path: Path) -> str:
             return "\n".join(text for _, text, _ in results)
     except ImportError:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("EasyOCR failed for %s: %s", path.name, e)
 
     return ""
 
@@ -126,22 +131,29 @@ def extract_text_office(path: Path) -> str:
             return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
         except ImportError:
             pass
+        except Exception as e:
+            logger.debug("DOCX extraction failed for %s: %s", path.name, e)
 
     # XLSX
     if ext == ".xlsx":
         try:
             import openpyxl
             wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-            texts = []
-            for sheet in wb.sheetnames[:3]:  # First 3 sheets
-                ws = wb[sheet]
-                for row in list(ws.iter_rows(max_row=50, values_only=True)):
-                    row_text = " ".join(str(c) for c in row if c)
-                    if row_text.strip():
-                        texts.append(row_text)
-            return "\n".join(texts[:100])  # Limit
+            try:
+                texts = []
+                for sheet in wb.sheetnames[:3]:  # First 3 sheets
+                    ws = wb[sheet]
+                    for row in list(ws.iter_rows(max_row=50, values_only=True)):
+                        row_text = " ".join(str(c) for c in row if c)
+                        if row_text.strip():
+                            texts.append(row_text)
+                return "\n".join(texts[:100])  # Limit
+            finally:
+                wb.close()
         except ImportError:
             pass
+        except Exception as e:
+            logger.debug("XLSX extraction failed for %s: %s", path.name, e)
 
     # PPTX
     if ext == ".pptx":
@@ -156,6 +168,8 @@ def extract_text_office(path: Path) -> str:
             return "\n".join(texts)
         except ImportError:
             pass
+        except Exception as e:
+            logger.debug("PPTX extraction failed for %s: %s", path.name, e)
 
     return ""
 
@@ -173,7 +187,8 @@ def extract_text(path: Path, max_chars: int = 8000) -> str:
     elif ext in (".txt", ".md", ".csv", ".json", ".xml", ".html", ".log"):
         try:
             text = path.read_text(errors="ignore")[:max_chars]
-        except Exception:
+        except Exception as e:
+            logger.debug("Text read failed for %s: %s", path.name, e)
             text = ""
     else:
         text = ""

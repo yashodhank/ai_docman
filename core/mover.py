@@ -26,7 +26,7 @@ def run_apply(cfg: dict[str, Any], dry_run: bool = False, verbose: bool = False)
     if not moves_file.exists():
         raise FileNotFoundError(f"{moves_file} not found.")
 
-    # Load duplicate paths
+    # Load duplicate paths (normalized)
     dup_paths: set[str] = set()
     if dupes_file.exists():
         with open(dupes_file, encoding="utf-8") as f:
@@ -35,7 +35,7 @@ def run_apply(cfg: dict[str, Any], dry_run: bool = False, verbose: bool = False)
                 for p in row.get("duplicate_paths", "").split("|"):
                     p = p.strip()
                     if p:
-                        dup_paths.add(p)
+                        dup_paths.add(str(Path(p).resolve()))
 
     moved = skipped = quarantined = inbox_count = 0
 
@@ -64,12 +64,12 @@ def run_apply(cfg: dict[str, Any], dry_run: bool = False, verbose: bool = False)
             size = old_path.stat().st_size if old_path.is_file() else 0
 
             if dry_run:
-                action = "quarantine" if str(old_path) in dup_paths else (
+                action = "quarantine" if str(old_resolved) in dup_paths else (
                     "move" if confidence == "High" else "inbox")
                 print(f"  [{action}] {old_path.name} -> {new_path.parent.name}/")
                 continue
 
-            if str(old_path) in dup_paths:
+            if str(old_resolved) in dup_paths:
                 dest = safe_dest(old_path, quarantine)
                 atomic_move(old_path, dest)
                 log_operation(logger, op="quarantine", src=str(old_path),

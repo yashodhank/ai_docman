@@ -61,7 +61,11 @@ def run_triage(cfg: dict[str, Any], weekly: bool = False,
             if dry_run:
                 print(f"  [capture] {fpath.name}")
             else:
-                shutil.copy2(str(fpath), str(dest))
+                try:
+                    shutil.copy2(str(fpath), str(dest))
+                except (OSError, shutil.Error) as e:
+                    logger.error("Failed to capture %s: %s", fpath.name, e)
+                    continue
                 if verbose:
                     print(f"  Captured: {fpath.name}")
             captured += 1
