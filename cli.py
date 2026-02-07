@@ -318,6 +318,16 @@ def cmd_setup(args: argparse.Namespace) -> None:
     sys.exit(0 if success else 1)
 
 
+def cmd_audit(args: argparse.Namespace) -> None:
+    """Generate audit reports on operations, classification, and integrity."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.core.audit import run_audit
+    run_audit(cfg, format=args.format, since=args.since, until=args.until,
+              op_type=args.op, file_path=args.file,
+              output_file=args.output)
+
+
 def cmd_dashboard(args: argparse.Namespace) -> None:
     """Show terminal dashboard with system health, doc stats, and alerts."""
     cfg = _setup(args)
@@ -417,6 +427,18 @@ def main() -> None:
     p = sub.add_parser("ai-status", help="Check AI/Ollama availability")
     _add_global_flags(p)
     p.set_defaults(func=cmd_ai_status)
+
+    # audit
+    p = sub.add_parser("audit", help="Generate audit reports")
+    p.add_argument("--format", choices=["text", "json", "csv"], default="text",
+                   help="Output format")
+    p.add_argument("--since", type=str, help="Start date (ISO format)")
+    p.add_argument("--until", type=str, help="End date (ISO format)")
+    p.add_argument("--op", type=str, help="Filter by operation type")
+    p.add_argument("--file", type=str, help="Trace a specific file")
+    p.add_argument("--output", type=str, help="Write report to file")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_audit)
 
     # dashboard
     p = sub.add_parser("dashboard", help="Show terminal dashboard")
