@@ -230,3 +230,111 @@ def batch_classify(
         result["original_path"] = f.get("path", "")
         results.append(result)
     return results
+
+
+# === Vision Model Support (v3.0) ===
+
+DEFAULT_VISION_MODEL = "llava:7b"
+
+
+def query_vision_llm(prompt: str, image_path: Path,
+                     model: str = DEFAULT_VISION_MODEL,
+                     timeout: int = 120) -> str:
+    """Send a prompt + image to Ollama vision model via HTTP API."""
+    import base64
+
+    _validate_model_name(model)
+
+    try:
+        with open(image_path, "rb") as f:
+            image_b64 = base64.b64encode(f.read()).decode("utf-8")
+    except OSError as e:
+        logger.debug("Failed to read image %s: %s", image_path, e)
+        return ""
+
+    try:
+        payload = json.dumps({
+            "model": model,
+            "prompt": prompt,
+            "images": [image_b64],
+            "stream": False,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "http://localhost:11434/api/generate",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("response", "").strip()
+    except urllib.error.URLError as e:
+        logger.debug("Ollama vision API error: %s", e)
+        return ""
+    except Exception as e:
+        logger.debug("Vision query failed: %s", e)
+        return ""
+
+
+def classify_image_with_llm(
+    image_path: Path,
+    filename: str,
+    categories: list[str],
+    model: str = DEFAULT_VISION_MODEL,
+) -> dict[str, Any]:
+    """Use vision LLM to classify an image based on its visual content."""
+    _validate_model_name(model)
+    categories_str = "\n".join(f"- {c}" for c in categories)
+
+    prompt = f"""You are a document/image classifier. Analyze this image and classify it.
+
+FILENAME: {filename}
+
+AVAILABLE CATEGORIES:
+{categories_str}
+
+INSTRUCTIONS:
+1. Describe what you see in the image briefly
+2. Choose the BEST matching category from the list above
+3. Rate your confidence: high, medium, or low
+
+Respond in this exact JSON format:
+{{"category": "category_path", "description": "brief description of image content", "confidence": "high/medium/low", "reason": "brief explanation"}}
+
+JSON response:"""
+
+    response = query_vision_llm(prompt, image_path, model=model)
+
+    try:
+        clean = response.strip()
+        if clean.startswith("```"):
+            lines = clean.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            clean = "\n".join(lines)
+
+        start = clean.find("{")
+        if start != -1:
+            depth = 0
+            end = start
+            for i, c in enumerate(clean[start:], start):
+                if c == "{":
+                    depth += 1
+                elif c == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            json_str = clean[start:end]
+            return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.debug("Failed to parse vision LLM response: %s", e)
+
+    return {
+        "category": "",
+        "description": "",
+        "confidence": "low",
+        "reason": "Failed to parse vision LLM response",
+    }

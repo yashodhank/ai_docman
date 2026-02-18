@@ -14,7 +14,8 @@ from docman.logging_setup import setup_logging, generate_session_id
 
 # Write commands that need process lock
 _WRITE_COMMANDS = {"index", "duplicates", "classify", "triage", "verify",
-                   "dedup", "smart-classify", "setup"}
+                   "dedup", "smart-classify", "setup", "cleanup", "tag",
+                   "search-index", "watch"}
 
 
 def _add_global_flags(parser: argparse.ArgumentParser) -> None:
@@ -107,7 +108,11 @@ def cmd_analyze(args: argparse.Namespace) -> None:
     _suppress_print_if_quiet(args)
     from docman.ai.analyzer import SmartAnalyzer
 
-    analyzer = SmartAnalyzer(model=args.model, use_ai=not args.no_ai)
+    vision_model = getattr(args, "vision_model", None)
+    kwargs = {"model": args.model, "use_ai": not args.no_ai}
+    if vision_model:
+        kwargs["vision_model"] = vision_model
+    analyzer = SmartAnalyzer(**kwargs)
 
     if args.ensure_model:
         if not analyzer.ensure_model():
@@ -161,7 +166,11 @@ def cmd_smart_classify(args: argparse.Namespace) -> None:
     import logging
 
     logger = logging.getLogger("docman")
-    analyzer = SmartAnalyzer(model=args.model, use_ai=True)
+    vision_model = getattr(args, "vision_model", None)
+    sc_kwargs = {"model": args.model, "use_ai": True}
+    if vision_model:
+        sc_kwargs["vision_model"] = vision_model
+    analyzer = SmartAnalyzer(**sc_kwargs)
 
     if not analyzer.use_ai:
         print("AI not available. Install Ollama: https://ollama.ai")
@@ -343,6 +352,154 @@ def cmd_system_status(args: argparse.Namespace) -> None:
     print_status_report()
 
 
+# === v3.0 Enhancement Commands ===
+
+
+def cmd_cleanup(args: argparse.Namespace) -> None:
+    """Run cleanup scanners for empty dirs, broken links, temp files, large files."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.core.cleanup import run_cleanup
+    run_cleanup(cfg, empty_dirs=args.empty_dirs, broken_links=args.broken_links,
+                temp_files=args.temp_files, large_files=args.large_files,
+                run_all=args.all, action=args.action,
+                dry_run=args.dry_run, verbose=args.verbose)
+
+
+def cmd_duplicates_v3(args: argparse.Namespace) -> None:
+    """Enhanced duplicates with --fast, --fuzzy, --images flags."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+
+    if args.fast:
+        from docman.core.duplicates import run_fast_duplicates
+        run_fast_duplicates(cfg, dry_run=args.dry_run, verbose=args.verbose)
+    elif args.fuzzy:
+        from docman.core.duplicates import run_fuzzy_duplicates
+        run_fuzzy_duplicates(cfg, dry_run=args.dry_run, verbose=args.verbose,
+                             limit=getattr(args, "limit", 0))
+    elif args.images:
+        from docman.core.image_dedup import run_image_dedup
+        run_image_dedup(cfg, dry_run=args.dry_run, verbose=args.verbose)
+    else:
+        from docman.core.duplicates import run_duplicates
+        run_duplicates(cfg, dry_run=args.dry_run, verbose=args.verbose)
+
+
+def cmd_tag(args: argparse.Namespace) -> None:
+    """Manage file tags."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.core.tags import TagDB
+
+    docs = Path(cfg["docs_dir"])
+    index_dir = docs / cfg["index_dir"]
+    db = TagDB(index_dir / "tags.json")
+
+    sub = args.tag_action
+
+    if sub == "add":
+        path = str(Path(args.path).expanduser().resolve())
+        if not Path(path).exists():
+            print(f"  Warning: {path} does not exist")
+        db.add_tags(path, args.tags)
+        print(f"Added tags {args.tags} to {Path(path).name}")
+    elif sub == "remove":
+        path = str(Path(args.path).expanduser().resolve())
+        db.remove_tags(path, args.tags)
+        print(f"Removed tags {args.tags} from {Path(path).name}")
+    elif sub == "list":
+        if args.path:
+            path = str(Path(args.path).expanduser().resolve())
+            tags = db.get_tags(path)
+            print(f"Tags for {Path(path).name}: {', '.join(tags) if tags else '(none)'}")
+        else:
+            all_tagged = db.list_all()
+            if not all_tagged:
+                print("No tagged files.")
+            else:
+                for path, entry in all_tagged.items():
+                    print(f"  {Path(path).name}: {', '.join(entry['tags'])}")
+    elif sub == "search":
+        results = db.search_by_tag(args.tag)
+        if not results:
+            print(f"No files tagged with '{args.tag}'")
+        else:
+            print(f"Files tagged '{args.tag}':")
+            for path in results:
+                print(f"  {path}")
+    elif sub == "auto":
+        from docman.core.tags import auto_tag_from_categories
+        count = auto_tag_from_categories(cfg, db)
+        print(f"Auto-tagged {count} files based on category structure")
+
+
+def cmd_watch(args: argparse.Namespace) -> None:
+    """Start or stop the filesystem watcher daemon."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.core.watcher import start_watcher, stop_watcher
+
+    if args.stop:
+        stop_watcher()
+    else:
+        watch_dirs = [Path(d).expanduser() for d in (args.dirs or cfg.get("watch", {}).get("directories", ["~/Downloads"]))]
+        debounce = args.interval or cfg.get("watch", {}).get("debounce_seconds", 5)
+        start_watcher(cfg, watch_dirs=watch_dirs, debounce_seconds=debounce,
+                      dry_run=args.dry_run, verbose=args.verbose)
+
+
+def cmd_search_index(args: argparse.Namespace) -> None:
+    """Build or update the semantic search index."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.core.search import build_search_index
+    build_search_index(cfg, dry_run=args.dry_run, verbose=args.verbose)
+
+
+def cmd_search(args: argparse.Namespace) -> None:
+    """Semantic search across managed files."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.core.search import run_search
+    results = run_search(cfg, query=args.query, top_k=args.top_k)
+    if not results:
+        print("No results found.")
+    else:
+        print(f"\nSearch results for: \"{args.query}\"\n")
+        for i, r in enumerate(results, 1):
+            print(f"  {i}. [{r['score']:.3f}] {r['path']}")
+            if r.get("snippet"):
+                print(f"     {r['snippet'][:100]}")
+
+
+def cmd_learn(args: argparse.Namespace) -> None:
+    """View or reset adaptive learning data."""
+    cfg = _setup(args)
+    _suppress_print_if_quiet(args)
+    from docman.ai.learning import LearningDB
+
+    docs = Path(cfg["docs_dir"])
+    index_dir = docs / cfg["index_dir"]
+    db = LearningDB(index_dir / "learning.json")
+
+    if args.reset:
+        db.reset()
+        print("Learning data cleared.")
+    else:
+        data = db.show()
+        if not data["corrections"]:
+            print("No learned patterns yet.")
+        else:
+            print(f"Learned corrections: {len(data['corrections'])}")
+            for c in data["corrections"]:
+                print(f"  {c['pattern']}: {c['from_category']} -> {c['to_category']} (x{c['count']})")
+        if data.get("confidence_overrides"):
+            print(f"\nConfidence overrides:")
+            for cat, conf in data["confidence_overrides"].items():
+                print(f"  {cat}: {conf}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="docman",
                                      description="Unified Document Manager")
@@ -355,8 +512,12 @@ def main() -> None:
 
     # duplicates
     p = sub.add_parser("duplicates", help="Detect duplicate files from index")
+    p.add_argument("--fast", action="store_true", help="Use fast tiered hashing (size -> partial -> full)")
+    p.add_argument("--fuzzy", action="store_true", help="Find files with similar names")
+    p.add_argument("--images", action="store_true", help="Find visually similar images using perceptual hashing")
+    p.add_argument("--limit", type=int, default=0, help="Max files to scan for fuzzy matching (default: 50K)")
     _add_global_flags(p)
-    p.set_defaults(func=cmd_duplicates)
+    p.set_defaults(func=cmd_duplicates_v3)
 
     # classify
     p = sub.add_parser("classify", help="Classify loose files")
@@ -400,6 +561,7 @@ def main() -> None:
     p = sub.add_parser("analyze", help="Analyze a file with AI classification")
     p.add_argument("path", help="File or directory to analyze")
     p.add_argument("--model", default="phi3:mini", help="Ollama model to use")
+    p.add_argument("--vision-model", default=None, help="Ollama vision model for images (default: from config)")
     p.add_argument("--no-ai", action="store_true", help="Disable AI, use rules only")
     p.add_argument("--ensure-model", action="store_true", help="Pull model if not available")
     p.add_argument("--json", action="store_true", help="Output as JSON")
@@ -410,6 +572,7 @@ def main() -> None:
     p = sub.add_parser("smart-classify", help="Classify using AI analysis")
     p.add_argument("--scope", choices=["all", "inbox", "downloads"], default="inbox")
     p.add_argument("--model", default="phi3:mini", help="Ollama model to use")
+    p.add_argument("--vision-model", default=None, help="Ollama vision model for images (default: from config)")
     p.add_argument("--limit", type=int, help="Limit number of files to process")
     p.add_argument("--rename", action="store_true", help="Apply AI-suggested renames")
     _add_global_flags(p)
@@ -460,6 +623,75 @@ def main() -> None:
     _add_global_flags(p)
     p.set_defaults(func=cmd_system_status)
 
+    # === v3.0 Enhancement Commands ===
+
+    # cleanup
+    p = sub.add_parser("cleanup", help="Find and remove empty dirs, broken links, temp files, large files")
+    p.add_argument("--empty-dirs", action="store_true", help="Scan for empty directories")
+    p.add_argument("--broken-links", action="store_true", help="Scan for broken symlinks")
+    p.add_argument("--temp-files", action="store_true", help="Scan for temp/junk files")
+    p.add_argument("--large-files", action="store_true", help="Scan for large files")
+    p.add_argument("--all", action="store_true", help="Run all cleanup scanners")
+    p.add_argument("--action", choices=["report", "delete"], default="report",
+                   help="Action to take on findings (default: report)")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_cleanup)
+
+    # tag
+    p = sub.add_parser("tag", help="Manage file tags")
+    tag_sub = p.add_subparsers(dest="tag_action", required=True)
+
+    tp = tag_sub.add_parser("add", help="Add tags to a file")
+    tp.add_argument("path", help="File path")
+    tp.add_argument("tags", nargs="+", help="Tags to add")
+    _add_global_flags(tp)
+
+    tp = tag_sub.add_parser("remove", help="Remove tags from a file")
+    tp.add_argument("path", help="File path")
+    tp.add_argument("tags", nargs="+", help="Tags to remove")
+    _add_global_flags(tp)
+
+    tp = tag_sub.add_parser("list", help="List tags for a file or all tagged files")
+    tp.add_argument("path", nargs="?", default=None, help="File path (optional)")
+    _add_global_flags(tp)
+
+    tp = tag_sub.add_parser("search", help="Find files with a specific tag")
+    tp.add_argument("tag", help="Tag to search for")
+    _add_global_flags(tp)
+
+    tp = tag_sub.add_parser("auto", help="Auto-tag files based on category structure")
+    _add_global_flags(tp)
+
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_tag)
+
+    # watch
+    p = sub.add_parser("watch", help="Watch directories for new files and auto-triage")
+    p.add_argument("--dirs", nargs="+", help="Directories to watch")
+    p.add_argument("--interval", type=int, help="Debounce interval in seconds")
+    p.add_argument("--stop", action="store_true", help="Stop the running watcher")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_watch)
+
+    # search-index
+    p = sub.add_parser("search-index", help="Build/update semantic search index")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_search_index)
+
+    # search
+    p = sub.add_parser("search", help="Semantic search across managed files")
+    p.add_argument("query", help="Search query")
+    p.add_argument("--top-k", type=int, default=10, help="Number of results to return")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_search)
+
+    # learn
+    p = sub.add_parser("learn", help="View or reset adaptive learning data")
+    p.add_argument("--show", action="store_true", default=True, help="Show learned patterns")
+    p.add_argument("--reset", action="store_true", help="Clear all learning data")
+    _add_global_flags(p)
+    p.set_defaults(func=cmd_learn)
+
     args = parser.parse_args()
 
     # Generate session ID and acquire lock for write operations
@@ -474,7 +706,7 @@ def main() -> None:
             start_time = time.monotonic()
             args.func(args)
             duration = time.monotonic() - start_time
-            if not getattr(args, "quiet", False):
+            if not getattr(args, "quiet", False) and not getattr(args, "json", False):
                 print(f"\n[session {session_id}, {duration:.1f}s]")
         finally:
             release_lock()
@@ -482,5 +714,9 @@ def main() -> None:
         start_time = time.monotonic()
         args.func(args)
         duration = time.monotonic() - start_time
-        if not getattr(args, "quiet", False) and args.command not in ("ai-status", "system-status"):
+        # Suppress session footer for structured-output commands
+        suppress_footer = args.command in ("ai-status", "system-status", "search")
+        if not suppress_footer and getattr(args, "json", False):
+            suppress_footer = True
+        if not getattr(args, "quiet", False) and not suppress_footer:
             print(f"\n[session {session_id}, {duration:.1f}s]")

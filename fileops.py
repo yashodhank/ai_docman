@@ -48,9 +48,24 @@ def safe_dest(src: Path, dest_dir: Path) -> Path:
 
 
 def safe_move(src: Path, dst: Path) -> None:
-    """Move src to dst, creating parent directories as needed."""
+    """Move src to dst, creating parent directories as needed. Updates tag DB."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(src), str(dst))
+    # Update tag DB if it exists
+    _update_tag_db_on_move(src, dst)
+
+
+def _update_tag_db_on_move(src: Path, dst: Path) -> None:
+    """Update tag database paths after a file move."""
+    try:
+        index_dir = Path.home() / "Documents" / "_System" / "_Indexes"
+        tags_file = index_dir / "tags.json"
+        if tags_file.exists():
+            from docman.core.tags import TagDB
+            db = TagDB(tags_file)
+            db.update_path(str(src.resolve()), str(dst.resolve()))
+    except Exception:
+        pass  # Tag DB update is best-effort
 
 
 # Backwards compatibility alias

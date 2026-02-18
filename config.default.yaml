@@ -29,3 +29,23 @@ keep_in_inbox:
 
 log_max_bytes: 10485760   # 10 MB
 log_backup_count: 10
+
+# --- v3.0 Enhancements ---
+
+cleanup:
+  temp_patterns: [".DS_Store", "Thumbs.db", "desktop.ini", "*.tmp", "*.swp", "~$*", "*.pyc", "__pycache__"]
+  large_file_threshold_mb: 100
+
+watch:
+  directories: ["~/Downloads"]
+  debounce_seconds: 5
+  auto_classify: true
+  auto_classify_confidence: high
+
+ai:
+  vision_model: "llava:7b"
+  vision_enabled: true
+
+search:
+  embedding_model: "nomic-embed-text"
+  top_k: 10

@@ -39,3 +39,25 @@ class VerificationResult:
     expected_sha: str
     actual_sha: str
     status: str  # "ok" | "missing" | "mismatch" | "skipped"
+
+
+@dc.dataclass
+class CleanupResult:
+    scanner: str  # "empty_dirs" | "broken_links" | "temp_files" | "large_files"
+    path: Path
+    size_bytes: int = 0
+    action: str = "report"  # "report" | "delete"
+
+
+@dc.dataclass
+class TagEntry:
+    path: str
+    tags: list[str]
+    updated: str
+
+
+@dc.dataclass
+class SearchResult:
+    path: str
+    score: float
+    snippet: str = ""

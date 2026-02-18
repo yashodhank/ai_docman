@@ -14,6 +14,32 @@ from docman.logging_setup import log_operation
 logger = logging.getLogger("docman")
 
 
+def _record_undo_correction(cfg: dict[str, Any], rec: dict, src: Path, dst: Path) -> None:
+    """Record an undo as a classification correction for adaptive learning."""
+    try:
+        docs = Path(cfg["docs_dir"]).resolve()
+        index_dir = docs / Path(cfg["index_dir"])
+        from docman.ai.learning import LearningDB
+        db = LearningDB(index_dir / "learning.json")
+
+        # Determine categories from paths
+        from_category = rec.get("category", "")
+        if not from_category and src.is_relative_to(docs):
+            # Extract category from the src path (where the file currently is)
+            rel = src.relative_to(docs)
+            from_category = str(rel.parts[0]) if rel.parts else ""
+
+        to_category = ""
+        if dst.is_relative_to(docs):
+            rel = dst.relative_to(docs)
+            to_category = str(rel.parts[0]) if rel.parts else ""
+
+        if from_category and to_category and from_category != to_category:
+            db.record_correction(src.name, from_category, to_category)
+    except Exception as e:
+        logger.debug("Failed to record undo correction: %s", e)
+
+
 def run_undo(cfg: dict[str, Any], last: int | None = None,
              since: str | None = None, dry_run: bool = False,
              verbose: bool = False) -> int:
@@ -97,6 +123,8 @@ def run_undo(cfg: dict[str, Any], last: int | None = None,
             atomic_move(src, dst)
             log_operation(logger, op="undo", src=str(src), dst=str(dst),
                           sha256=expected_sha, dry_run=False, status="ok")
+            # Record correction for adaptive learning
+            _record_undo_correction(cfg, rec, src, dst)
             if verbose:
                 print(f"  Undone: {src.name} -> {dst.parent}")
         undone += 1

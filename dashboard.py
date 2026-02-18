@@ -190,6 +190,18 @@ def _gather_dashboard_data(cfg: dict[str, Any]) -> dict[str, Any]:
 
     data["alerts"] = alerts
 
+    # --- Tag Stats ---
+    tags_file = index_dir / "tags.json"
+    tag_stats: dict[str, Any] = {"total_tagged_files": 0, "total_unique_tags": 0, "top_tags": []}
+    if tags_file.exists():
+        try:
+            from docman.core.tags import TagDB
+            tag_db = TagDB(tags_file)
+            tag_stats = tag_db.get_stats()
+        except Exception:
+            pass
+    data["tags"] = tag_stats
+
     return data
 
 

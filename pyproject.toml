@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "docman"
-version = "2.0.0"
+version = "3.0.0"
 description = "AI-powered document management CLI using Ollama for intelligent classification"
 readme = "README.md"
 license = {text = "MIT"}
@@ -41,8 +41,16 @@ ocr = [
     "easyocr>=1.7.0",
     "surya-ocr>=0.4.0",
 ]
+watch = [
+    "watchdog>=3.0.0",
+]
+search = [
+    "numpy>=1.24.0",
+]
 all = [
     "docman[ocr]",
+    "docman[watch]",
+    "docman[search]",
 ]
 
 [project.scripts]
